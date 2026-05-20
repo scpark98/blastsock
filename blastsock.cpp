@@ -15,7 +15,7 @@
 #include "WinINetDownLoader.h"
 
 
-#include "base64.h"
+//#include "base64.h"
 #include "NTLM.h"
 #include "AllNTLM.h"
 #include "md4.h"
@@ -846,8 +846,6 @@ bool blastsock::CheckManualProxy(HKEY hKeyParent, LPCSTR lpszKeyName)
 		}
 	}
 
-	
-
 	Socket::PrintLog(2 , "m_pSelectedProxyData->SetType(PROXYTYPE_HTTP11)\r\n");
 	Socket::PrintLog(2 , "End CProxyInfo::CheckManualProxy(%d , %s , %d , %s , %s)\r\n" ,
 		m_bUseProxy, m_szProxyIP, m_nProxyPort,
@@ -860,70 +858,68 @@ bool blastsock::Connect(char *addr, unsigned int port)
 {
 	Socket::PrintLog(1 , "blastsock::Connect(%s : %d) Start\r\n" , addr , port);
 
-	int i;
-
 	switch(m_tunnelingmode)
 	{
-	case BLASTSOCK_PROXYTUNNELING_MANUAL:
-	case BLASTSOCK_PROXYQUERY: 
-	case BLASTSOCK_PROXYTUNNELING: 
-		Socket::PrintLog(2 , "m_tunnelingmode == BLASTSOCK_PROXYQUERY ||  BLASTSOCK_PROXYTUNNELING (%d)\r\n" , m_tunnelingmode);
-		/* destination port 가 443 이라면 proxy 환경이더라도 
-		   direct 로 열어 놓았을 가능성이 높으므로 일단 바로 접속을 해본다 */
-		//if(m_pProxyinfo->GetProxyEnv() == PROXYENV_UNKNOWN || m_pProxyinfo->GetProxyEnv() == PROXYENV_DIRECT)
-		//if(port == 443 || port == 80) 
-		//port scanning으로 서버외에는 P2P 연결 시 80 , 443을 사용하지 않는다.
-		//항상 direct로 연결을 시도 해 본다.
+		case BLASTSOCK_PROXYTUNNELING_MANUAL:
+		case BLASTSOCK_PROXYQUERY: 
+		case BLASTSOCK_PROXYTUNNELING: 
+			Socket::PrintLog(2 , "m_tunnelingmode == BLASTSOCK_PROXYQUERY ||  BLASTSOCK_PROXYTUNNELING (%d)\r\n" , m_tunnelingmode);
+			/* destination port 가 443 이라면 proxy 환경이더라도 
+			   direct 로 열어 놓았을 가능성이 높으므로 일단 바로 접속을 해본다 */
+			//if(m_pProxyinfo->GetProxyEnv() == PROXYENV_UNKNOWN || m_pProxyinfo->GetProxyEnv() == PROXYENV_DIRECT)
+			//if(port == 443 || port == 80) 
+			//port scanning으로 서버외에는 P2P 연결 시 80 , 443을 사용하지 않는다.
+			//항상 direct로 연결을 시도 해 본다.
 
 
-		if(!m_bUseProxy)
-		{
-			Socket::PrintLog(2 , "Try to connect directly(%s : %d)\r\n" , addr , port);
-
-			//if(Socket::Connect(addr, port)) 
-			if(Socket::Connect(addr, port , false )) 
+			if(!m_bUseProxy)
 			{
-				Socket::PrintLog(2 , "Success connect to destination directly(%s : %d)\r\n" , addr , port);
-				Socket::PrintLog(1 , "blastsock::Connect() End\r\n");
+				Socket::PrintLog(2 , "Try to connect directly(%s : %d)\r\n" , addr , port);
+
+				//if(Socket::Connect(addr, port)) 
+				if(Socket::Connect(addr, port , false )) 
+				{
+					Socket::PrintLog(2 , "Success connect to destination directly(%s : %d)\r\n" , addr , port);
+					Socket::PrintLog(1 , "blastsock::Connect() End\r\n");
 			
-				return true;
+					return true;
+				}
+				else
+				{
+					Socket::PrintLog(2 , "Fail to connect direct(%s : %d), GetLastError:%d\r\n" , addr , port, Socket::GetLastError());
+					return false;
+				}
 			}
-			else
+			else //
 			{
-				Socket::PrintLog(2 , "Fail to connect direct(%s : %d), GetLastError:%d\r\n" , addr , port, Socket::GetLastError());
+
+				bool result = ConnecToProxyTunnel(addr, port);
+				if (result)
+					return true;
+				else
+					return Socket::Connect(addr, port, false);
+			
+			}
+			break;
+		case BLASTSOCK_NO_PROXYTUNNELING: 
+			Socket::PrintLog(2 , "m_tunnelingmode == BLASTSOCK_NO_PROXYTUNNELING \r\n");
+			//if(!Socket::Connect(addr, port))
+			if(!Socket::Connect(addr, port , false /* non-blocking */))
+			{
+				Socket::PrintLog(2 , "[Fail] Socket::Connect(%s , %d)\r\n" , addr , port);
+				Socket::PrintLog(1 , "blastsock::Connect() End\r\n");
+		
 				return false;
 			}
-		}
-		else //
-		{
-
-			bool result = ConnecToProxyTunnel(addr, port);
-			if (result)
-				return true;
-			else
-				return Socket::Connect(addr, port, false);
-			
-		}
-		break;
-	case BLASTSOCK_NO_PROXYTUNNELING: 
-		Socket::PrintLog(2 , "m_tunnelingmode == BLASTSOCK_NO_PROXYTUNNELING \r\n");
-		//if(!Socket::Connect(addr, port))
-		if(!Socket::Connect(addr, port , false /* non-blocking */))
-		{
-			Socket::PrintLog(2 , "[Fail] Socket::Connect(%s , %d)\r\n" , addr , port);
+			Socket::PrintLog(2 , "Success Socket::Connect(%s , %d)\r\n" , addr , port);
+			break;
+		default: 
+			Socket::PrintLog(2 , "[Error] BLASTSOCK_ERROR_PARAMETER \r\n");
 			Socket::PrintLog(1 , "blastsock::Connect() End\r\n");
+	
+			Socket::SetLastError(BLASTSOCK_ERROR_PARAMETER);
 		
 			return false;
-		}
-		Socket::PrintLog(2 , "Success Socket::Connect(%s , %d)\r\n" , addr , port);
-		break;
-	default: 
-		Socket::PrintLog(2 , "[Error] BLASTSOCK_ERROR_PARAMETER \r\n");
-		Socket::PrintLog(1 , "blastsock::Connect() End\r\n");
-	
-		Socket::SetLastError(BLASTSOCK_ERROR_PARAMETER);
-		
-		return false;
 	}
 
 	Socket::PrintLog(1 , "blastsock::Connect() End\r\n");

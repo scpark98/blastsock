@@ -3,9 +3,9 @@
 
 // neturoCrypto.h
 // aes 암호화해준다!
-#include "./cryptopp561/aes.h"
-#include "./cryptopp561/randpool.h"
-#include "./cryptopp561/modes.h"
+#include "./cryptopp/aes.h"
+#include "./cryptopp/randpool.h"
+#include "./cryptopp/modes.h"
 
 #include <string>
 //#include <iostream.h>

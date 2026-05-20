@@ -268,7 +268,9 @@ int Socket::Send(const char* buf, unsigned int bufLen, int flags)
 
 int Socket::Recv(char* buf, unsigned int bufLen, int flags)
 {
-	assert(m_s != INVALID_SOCKET);
+	//20250318 scpark 파일전송 도중 취소할 경우 소켓이 닫히고 난 후 이 함수가 호출되는 경우가 있는데
+	//이럴때마다 assert가 표시되어 주석처리 함.
+	//assert(m_s != INVALID_SOCKET);
 	int result = recv(m_s, buf, bufLen, flags);
 	return result;
 }

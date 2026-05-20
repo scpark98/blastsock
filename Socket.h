@@ -72,7 +72,7 @@ public:
 
 
 protected:
-	SOCKET m_s;
+	SOCKET m_s = INVALID_SOCKET;
 	bool m_own;
 	
 	CRITICAL_SECTION m_SendCS;

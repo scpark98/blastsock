@@ -5,10 +5,10 @@
 #include "stdafx.h"
 #include "neturoCrypto.h"
 
-#include "./cryptopp561/hex.h"
-#include "./cryptopp561/rsa.h"
-#include "./cryptopp561/osrng.h"
-#include "./cryptopp561/sha.h"
+#include "./cryptopp/hex.h"
+#include "./cryptopp/rsa.h"
+#include "./cryptopp/osrng.h"
+#include "./cryptopp/sha.h"
 
 USING_NAMESPACE(CryptoPP)
 USING_NAMESPACE(std)

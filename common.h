@@ -104,7 +104,7 @@ static  void  _format_str(char *buf,char *text,...)
 	va_end(ap);
 }
 
-static  void  OutputLog(char *text,...)
+static  void  OutputLog(const char *text,...)
 {
 	
 	static DWORD num=0;
@@ -154,7 +154,7 @@ static  void  OutputLog(char *text,...)
 
 	fclose(fp);
 }
-static  void  debug(char *text,...)
+static  void  debug(const char *text,...)
 {
 	
 

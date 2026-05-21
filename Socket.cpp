@@ -38,9 +38,8 @@ bool Socket::StartLog(LPTSTR filename   , bool bEncrypt )
 	return true;
 }
 
-void Socket::PrintLog(int depth , LPTSTR format, ...)
+void Socket::PrintLog(int depth , LPCTSTR format, ...)
 {
-	depth = 0;
 	if(!kLog)
 		return;
 	va_list ap;
@@ -130,7 +129,7 @@ bool Socket::Bind(unsigned int port, const char *addr)
 
 bool Socket::Bind(const sockaddr *psa, int saLen)
 {
-	assert(m_s != INVALID_SOCKET);
+	//assert(m_s != INVALID_SOCKET);
 
 	if(bind(m_s, const_cast<sockaddr *>(psa), saLen) == SOCKET_ERROR) return false;
 	else return true;
@@ -138,7 +137,7 @@ bool Socket::Bind(const sockaddr *psa, int saLen)
 
 bool Socket::Listen(int backlog)
 {
-	assert(m_s != INVALID_SOCKET);
+	//assert(m_s != INVALID_SOCKET);
 	if(listen(m_s, backlog) == SOCKET_ERROR) return false;
 	else return true;
 }
@@ -174,9 +173,8 @@ bool Socket::Connect(const sockaddr* psa, int saLen)
 
 */
 
-bool Socket::Connect(char* addr , unsigned int port , bool blocking)
+bool Socket::Connect(const char* addr, unsigned int port, bool blocking)
 {
-	
 	assert(addr != NULL);
 
 	sockaddr_in sa;
@@ -197,13 +195,10 @@ bool Socket::Connect(char* addr , unsigned int port , bool blocking)
 
 bool Socket::Connect(const sockaddr* psa, int saLen , bool blocking)
 {
-	assert(m_s != INVALID_SOCKET);
-
-	PrintLog(0, "Socket::Connect(1)\r\n");
-
+	//assert(m_s != INVALID_SOCKET);
 	if(!blocking)
 	{
-		PrintLog(0, "Socket::Connect(2)\r\n");
+		
 		ULONG nonBlk = 1 ;
 		struct fd_set fdset;
 		struct timeval timevalue;
@@ -213,8 +208,9 @@ bool Socket::Connect(const sockaddr* psa, int saLen , bool blocking)
 		FD_ZERO(&fdset);
 		FD_SET(m_s, &fdset);
 		
-		// Non-Blocking¿∏∑Œ 3√  ø¨∞· √º≈©∏¶ «—¥Ÿ.
-		timevalue.tv_sec = 2;
+		// Non-Blocking Î™®ÎìúÏóêÏÑú connect ÌÉÄÏûÑÏïÑÏõÉ.
+		// 5Ï¥à ‚Üí 10Ï¥à: SYN Ïû¨Ï†ÑÏÜ° Ïó¨Ïú† ÌôïÎ≥¥
+		timevalue.tv_sec = 10;
 		timevalue.tv_usec = 0;
 		::select(0, NULL, &fdset, NULL, &timevalue);
 		if( !FD_ISSET(m_s, &fdset) )
@@ -225,27 +221,62 @@ bool Socket::Connect(const sockaddr* psa, int saLen , bool blocking)
 		}
 		else
 		{
-			PrintLog(0 , "Success Socket::Connect(3)\r\n");
+			PrintLog(0 , "Success Socket::Connect()\r\n");
 			nonBlk = 0 ;
 			ioctlsocket(m_s , FIONBIO , &nonBlk);
 		}
 	}
 	else
 	{
-		PrintLog(0, "Socket::Connect(4)\r\n");
 		int result = connect(m_s, const_cast<sockaddr*>(psa), saLen);
 		if (result == SOCKET_ERROR) return false;
 	}
-	//hard close ¡ˆø¯ ... π´º± µÓø°º≠ ø¨∞·¿Ã ≤˜æÓ¡≥¥¬µ•..ø¨∞·¡ﬂ¿Ã∂Û∞Ì ≥™ø¿∞≈≥™ «œ¥¬ πÆ¡¶∞° ¿«Ω…µ ø° µ˚∂Û
+	//hard close ÔøΩÔøΩÔøΩÔøΩ ... ÔøΩÔøΩÔøΩÔøΩ ÔøΩÓø°ÔøΩÔøΩ ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ¬µÔøΩ..ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÃ∂ÔøΩÔøΩ ÔøΩÔøΩÔøΩÔøΩÔøΩ≈≥ÔøΩ ÔøΩœ¥ÔøΩ ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ ÔøΩ«Ω…µ øÔøΩ ÔøΩÔøΩÔøΩÔøΩ
 	linger l = {1, 0};
 	SetSockOpt(SOL_SOCKET, SO_LINGER, (char*)&l, sizeof(l));
-	PrintLog(0, "Success Socket::Connect(5)\r\n");
+
+	/* IP QOSÔøΩÔøΩ ÔøΩÔøΩÔøΩÔøΩ ÔøΩÿ∫ÔøΩÔøΩÔøΩ ÔøΩÓ∂≥ÔøΩÔøΩ? ÔøΩÏº±ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ ÔøΩÔøΩÔøΩÃ∏ÔøΩ ÔøΩÔøΩ≈∂ delayÔøΩÔøΩ ÔøΩÔøΩÔøΩÔøΩ ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ? 
+	QOS qos;
+	WSABUF wsbuf;
+	wsbuf.buf  = "G.711";
+	wsbuf.len = strlen(wsbuf.buf);
+
+	//qos.SendingFlowspec.TokenRate = 65535;
+	//qos.SendingFlowspec.TokenBucketSize = 1500;
+	//qos.SendingFlowspec.PeakBandwidth
+
+	WSAGetQOSByName(m_s , (LPWSABUF)&wsbuf ,&qos);	
+
+	PrintLog(0 , "QOS : SF(%d / %d / %d / %d / %d / %d / %d / %d )\r\n" , 
+		qos.SendingFlowspec.TokenRate ,
+		qos.SendingFlowspec.TokenBucketSize , 
+		qos.SendingFlowspec.PeakBandwidth,
+		qos.SendingFlowspec.Latency,
+		qos.SendingFlowspec.DelayVariation,
+		qos.SendingFlowspec.ServiceType ,
+		qos.SendingFlowspec.MaxSduSize ,
+		qos.SendingFlowspec.MinimumPolicedSize );
+
+	PrintLog(0 , "QOS : RF(%d / %d / %d / %d / %d / %d / %d / %d )\r\n" , 
+		qos.ReceivingFlowspec.TokenRate ,
+		qos.ReceivingFlowspec.TokenBucketSize , 
+		qos.ReceivingFlowspec.PeakBandwidth,
+		qos.ReceivingFlowspec.Latency,
+		qos.ReceivingFlowspec.DelayVariation,
+		qos.ReceivingFlowspec.ServiceType ,
+		qos.ReceivingFlowspec.MaxSduSize ,
+		qos.ReceivingFlowspec.MinimumPolicedSize );
+
+	PrintLog(0 , "QOS : PS(%s\r\n" , 
+		qos.ProviderSpecific.buf);
+	*/
+	//
 	return true;
 }
 
 bool Socket::Accept(Socket& target, sockaddr *psa, int* psaLen)
 {
-	assert(m_s != INVALID_SOCKET);
+	//assert(m_s != INVALID_SOCKET);
 	SOCKET s = accept(m_s, psa, psaLen);
 	if (s == INVALID_SOCKET) return false;
 	target.AttachSocket(s, true);
@@ -254,22 +285,20 @@ bool Socket::Accept(Socket& target, sockaddr *psa, int* psaLen)
 
 bool Socket::GetSockName(sockaddr *psa, int* psaLen)
 {
-	assert(m_s != INVALID_SOCKET);
+	//assert(m_s != INVALID_SOCKET);
 	if(getsockname(m_s, psa, psaLen) == SOCKET_ERROR) return false;
 	else return true;
 }
 
 int Socket::Send(const char* buf, unsigned int bufLen, int flags)
 {
-	assert(m_s != INVALID_SOCKET);
+	//assert(m_s != INVALID_SOCKET);
 	int result = send(m_s, buf, bufLen, flags);
 	return result;
 }
 
 int Socket::Recv(char* buf, unsigned int bufLen, int flags)
 {
-	//20250318 scpark ∆ƒ¿œ¿¸º€ µµ¡ﬂ √Îº“«“ ∞ÊøÏ º“ƒœ¿Ã ¥›»˜∞Ì ≥≠ »ƒ ¿Ã «‘ºˆ∞° »£√‚µ«¥¬ ∞ÊøÏ∞° ¿÷¥¬µ•
-	//¿Ã∑≤∂ß∏∂¥Ÿ assert∞° «•Ω√µ«æÓ ¡÷ºÆ√≥∏Æ «‘.
 	//assert(m_s != INVALID_SOCKET);
 	int result = recv(m_s, buf, bufLen, flags);
 	return result;
@@ -283,8 +312,9 @@ bool Socket::SendExact(const char* buf, unsigned int bufLen)
 	while(bufLen > 0)
 	{
 		result = Send(buf, bufLen);
-		if(result <= 0) 
+		if(result <= 0)
 		{
+			m_lastSendError = WSAGetLastError();
 			CloseSocket();
 			if(m_csuse) LeaveCriticalSection(&m_SendCS);
 			return false;
@@ -296,16 +326,17 @@ bool Socket::SendExact(const char* buf, unsigned int bufLen)
 	return true;
 }
 
-bool Socket::RecvExact(char* buf, unsigned int bufLen)
+bool Socket::RecvExact(char* buf, unsigned int bufLen, int flags)
 {
 	int result;
 	
 	if(m_csuse) EnterCriticalSection(&m_RecvCS);	
 	while(bufLen > 0)
 	{
-		result = Recv(buf, bufLen);
+		result = Recv(buf, bufLen, flags);
 		if(result <= 0)
 		{
+			m_lastRecvError = WSAGetLastError();
 			CloseSocket();
 			if(m_csuse) LeaveCriticalSection(&m_RecvCS);
 			return false;
@@ -317,7 +348,7 @@ bool Socket::RecvExact(char* buf, unsigned int bufLen)
 	return true;
 }
 
-bool Socket::RecvUntil(char* buf, unsigned int bufLen, char* delimit)
+bool Socket::RecvUntil(char* buf, unsigned int bufLen, const char* delimit)
 {
 	int delimitLen = strlen(delimit);
 	int result;
@@ -339,14 +370,14 @@ bool Socket::RecvUntil(char* buf, unsigned int bufLen, char* delimit)
 
 bool Socket::ShutDown(int how)
 {
-	assert(m_s != INVALID_SOCKET);
+	//assert(m_s != INVALID_SOCKET);
 	if(shutdown(m_s, how) == SOCKET_ERROR) return false;
 	else return true;
 }
 
 bool Socket::IOCtl(long cmd, unsigned long *argp)
 {
-	assert(m_s != INVALID_SOCKET);
+	//assert(m_s != INVALID_SOCKET);
 	if(ioctlsocket(m_s, cmd, argp) == SOCKET_ERROR) return false;
 	else return true;
 }
@@ -415,7 +446,7 @@ void Socket::SetLastError(int errorCode)
 
 bool Socket::SetSockOpt(int level, int optname, const char* optval, int optlen)
 {
-	assert(m_s != INVALID_SOCKET);
+	//assert(m_s != INVALID_SOCKET);
 	if(setsockopt(m_s, level, optname, optval, optlen) == SOCKET_ERROR) return false;
 	else return true;
 }

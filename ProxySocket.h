@@ -2,7 +2,7 @@
 #define BLASTSOCK_PROXYSOCKET_H
 
 // ProxySocket.h
-// proxy tunneling À» ÀÚµ¿À¸·Î ÇØÁÖ´Â ¼ÒÄÏ
+// proxy tunnelingì„ ìë™ìœ¼ë¡œ í•´ì£¼ëŠ” ì†Œì¼“
 
 #include "socket.h"
 #include "ProxyData.h"
@@ -26,53 +26,28 @@ public:
 
 	void SetProxyData(CProxyData& ProxyData);
 
-	bool Connect(char *addr, unsigned int port);
+	bool Connect(const char *addr, unsigned int port);
 
-	// Send ÇÒ HTTP query ÀüÃ¼¸¦ ÀÎÀÚ·Î ÁØ´Ù
+	// Sendì‹œ HTTP query ìì²´ë¥¼ ì¸ìë¡œ ì¤€ë‹¤
 	bool SendHTTPQuery(LPCSTR lpHTTPQuery, INT dwTotalBytesSend);
 
 	static BOOL CALLBACK ProxyAuthDlgProc(HWND hwndDlg,UINT uMsg,WPARAM wParam,LPARAM lParam);
 
 	bool WinInetConnect(char *strRetVal, int nRetValSize, char *strAgent, char *strServerAddr, int nServerPort, char *strUrl);
 
+	// 20170809 : 407ì—ëŸ¬ ì¼ë•Œ Proxy ì •ë³´ í‘œì‹œ
+	bool GetProxyIPPortIfUnAuthorized(char * ip, char * port);
 
-	
 protected:
-	bool ConnectNOPROXY(char *addr, unsigned int port);
-	bool ConnectSOCKS4(char *addr, unsigned int port);
-	bool ConnectSOCKS5(char *addr, unsigned int port);
-	bool ConnectHTTP11(char *addr, unsigned int port);
+    bool ConnectNOPROXY(const char* addr, unsigned int port);
+	bool ConnectSOCKS4(const char* addr, unsigned int port);
+    bool ConnectSOCKS5(const char* addr, unsigned int port);
+	bool ConnectHTTP11(const char* addr, unsigned int port);
 
 	CProxyData m_ProxyData;
 
-	//NTLM m_ntlm;
-
-	BOOL MakeDigestResponse(char *msg, char* host, int port);
-	void	AuthenticatorGetNewCnonce(char	*pCNonce);
-	char*	getDigest(char	*data, char	*out);
-
-	//Digest Auth
-	char				m_szrealm[50];
-	char				m_sznonce[150];
-	char				m_szcnonce[150];
-	char				m_szresponse[256];
-	int					m_nonceCount;
-	char				m_szqop[50];
-	char				m_szopaque[50];
-
-	//NTLM
-	char ntlm_hostname[256];
-	char ntlm_domain[256];
-	char ntlm_userid[256];
-	char ntlm_userpw[256];
-
-	byte  ntlmMsg2Flags[4];
-	unsigned char  nounce[8];
-	BOOL GetNtlmSsp_Change_Key(char *key, char * msg);
-
-	int create_NtlmSsp_Negotiate(char * msgbuf, int * len, char* hostname, char* domain);
-	int GetNonceFromChange_Key(char * msgbuf, int * len);
-	int Create_NtlmSsp_Auth(char * msgbuf, int * len);
+	NTLM m_ntlm;
+	bool m_proxyUnAuthorized; // 20170809 : 407ì—ëŸ¬ ì¼ë•Œ Proxy ì •ë³´ í‘œì‹œ
 };
 
 

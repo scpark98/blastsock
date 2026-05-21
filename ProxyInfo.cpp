@@ -289,9 +289,15 @@ void CProxyInfo::InitProxyData(CProxyData** ppProxyData, INT& nProxyData)
 	}
 
 	// 프록시 서버의 리스트 문자열을 복제해놓는다
-	char proxyserver[512];
+	// 20170810 : proxy bypass가 512를 넘는 경우가 있어 1024로 버퍼 길이를 늘린다.
+	/*char proxyserver[512];
 	ZeroMemory(proxyserver, 512);
+	strcpy(proxyserver, m_proxyserver);*/
+	char proxyserver[1024];
+	ZeroMemory(proxyserver, 1024);
 	strcpy(proxyserver, m_proxyserver);
+
+
 
 	// IP 와 PORT 를 파싱한다
 	LPSTR token = NULL;

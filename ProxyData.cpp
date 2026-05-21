@@ -43,7 +43,7 @@ DWORD CProxyData::GetType()
 	return m_dwType; 
 }
 
-BOOL CProxyData::SetProxyHost(LPSTR lpHost)
+BOOL CProxyData::SetProxyHost(LPCSTR lpHost)
 {
 	// Validate the parameters
 	if(lpHost == NULL || strlen(lpHost) == 0)  return FALSE;
@@ -72,7 +72,7 @@ SHORT CProxyData::GetProxyPort()
 	return m_shPort; 
 }
 
-BOOL CProxyData::SetUser(LPSTR lpUser)
+BOOL CProxyData::SetUser(LPCSTR lpUser)
 {
 	// Validate the parameters
 	if(lpUser == NULL || strlen(lpUser) == 0)  return FALSE;
@@ -87,7 +87,7 @@ LPSTR CProxyData::GetUser()
 	return m_lpUser;
 }
 
-BOOL CProxyData::SetPass(LPSTR lpPass)
+BOOL CProxyData::SetPass(LPCSTR lpPass)
 {
 	// Validate the parameters
 	if(lpPass == NULL || strlen(lpPass) == 0)  return FALSE;

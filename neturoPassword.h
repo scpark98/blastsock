@@ -30,7 +30,7 @@ public:
 	inline ToText(const char encrypted[MAXPWLEN])
 	{
 	    //nlog.Print(LL_INTINFO, NLOG("PASSWD : ToText called\n"));
-	    plaintext = neturoDecryptPasswd((char *)encrypted);
+	    plaintext = neturoDecryptPasswd((const char *)encrypted);
 	}
 	inline ~ToText()
 	{

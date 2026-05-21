@@ -35,7 +35,7 @@ RandomPool & neturoCrypto::GlobalRNG()
 
 void neturoCrypto::GenerateRSAKey(unsigned int keyLength, char *privateKey_char, char *publicKey_char)
 {
-	AutoSeededRandomPool randPool;
+	/*AutoSeededRandomPool randPool;
 	
 	string privateKey;
 	RSAES_OAEP_SHA_Decryptor priv(randPool, keyLength);
@@ -49,7 +49,33 @@ void neturoCrypto::GenerateRSAKey(unsigned int keyLength, char *privateKey_char,
 	HexEncoder pubKey;
 	pub.DEREncode(pubKey);
 	pubKey.MessageEnd();
-	pubKey.Get((byte *)publicKey_char, 320);
+	pubKey.Get((byte *)publicKey_char, 320);*/
+
+	AutoSeededRandomPool randPool;
+
+	// 1. RSA 키 생성
+	RSA::PrivateKey privateKey;
+	privateKey.GenerateRandomWithKeySize(randPool, keyLength);
+
+	RSA::PublicKey publicKey(privateKey);
+
+	// 2. 개인 키를 Hex 인코딩하여 저장
+	string privateKeyStr;
+	HexEncoder privEncoder(new StringSink(privateKeyStr));
+	privateKey.DEREncode(privEncoder);
+	privEncoder.MessageEnd();
+
+	strncpy(privateKey_char, privateKeyStr.c_str(), privateKeyStr.size());
+	privateKey_char[privateKeyStr.size()] = '\0'; // 문자열 종료 추가
+
+	// 3. 공개 키를 Hex 인코딩하여 저장
+	string publicKeyStr;
+	HexEncoder pubEncoder(new StringSink(publicKeyStr));
+	publicKey.DEREncode(pubEncoder);
+	pubEncoder.MessageEnd();
+
+	strncpy(publicKey_char, publicKeyStr.c_str(), publicKeyStr.size());
+	publicKey_char[publicKeyStr.size()] = '\0'; // 문자열 종료 추가
 }
 
 string neturoCrypto::RSAEncryptString(const char *publicKey, const char *message)
@@ -91,34 +117,34 @@ void neturoCrypto::InitAESKey()
 	ZeroMemory(neturoAESiv, AES::BLOCKSIZE);
 	AutoSeededRandomPool rng;
 	//byte randomBytes[AES::DEFAULT_KEYLENGTH];
-	rng.GenerateBlock((byte *)neturoAESKey, AES::DEFAULT_KEYLENGTH);
-	rng.GenerateBlock((byte *)neturoAESiv, AES::BLOCKSIZE);
+	rng.GenerateBlock((CryptoPP::byte *)neturoAESKey, AES::DEFAULT_KEYLENGTH);
+	rng.GenerateBlock((CryptoPP::byte *)neturoAESiv, AES::BLOCKSIZE);
 	//strncpy((char *)neturoAESiv, "12345678901234567890", AES::BLOCKSIZE);
 }
 
 void neturoCrypto::AESEncryptString(char *ciphertext, const char *plaintext, unsigned int length)
 {
 	CFB_Mode<AES >::Encryption cfbEncryption(neturoAESKey, AES::DEFAULT_KEYLENGTH, neturoAESiv);
-	cfbEncryption.ProcessData((byte *)ciphertext, (byte *)plaintext, length);
+	cfbEncryption.ProcessData((CryptoPP::byte *)ciphertext, (CryptoPP::byte *)plaintext, length);
 }
 
 void neturoCrypto::AESDecryptString(char *plaintext, const char *ciphertext, unsigned int length)
 {
 	CFB_Mode<AES >::Decryption cfbDecryption(neturoAESKey, AES::DEFAULT_KEYLENGTH, neturoAESiv);
-    cfbDecryption.ProcessData((byte *)plaintext, (byte *)ciphertext, length);
+    cfbDecryption.ProcessData((CryptoPP::byte *)plaintext, (CryptoPP::byte *)ciphertext, length);
 }
 
-byte * neturoCrypto::GetHexDecodedKey()
+CryptoPP::byte * neturoCrypto::GetHexDecodedKey()
 {
 	return neturoAESKey;
 }
 
-byte * neturoCrypto::GetHexDecodediv()
+CryptoPP::byte * neturoCrypto::GetHexDecodediv()
 {
 	return neturoAESiv;
 }
 
-void neturoCrypto::SetAESKey(byte *HexEncodedKey)
+void neturoCrypto::SetAESKey(CryptoPP::byte *HexEncodedKey)
 {
 	ZeroMemory(neturoAESKey, AES::DEFAULT_KEYLENGTH);
 
@@ -130,7 +156,7 @@ void neturoCrypto::SetAESKey(byte *HexEncodedKey)
 	return;
 }
 
-void neturoCrypto::SetAESiv(byte *HexEncodediv)
+void neturoCrypto::SetAESiv(CryptoPP::byte *HexEncodediv)
 {
 	ZeroMemory(neturoAESiv, AES::BLOCKSIZE);
 
@@ -142,7 +168,7 @@ void neturoCrypto::SetAESiv(byte *HexEncodediv)
 	return;
 }
 
-byte * neturoCrypto::GetHexEncodedKey()
+CryptoPP::byte * neturoCrypto::GetHexEncodedKey()
 {
 	ZeroMemory(hexEncodedAESKey, AES::DEFAULT_KEYLENGTH*2);
 
@@ -153,7 +179,7 @@ byte * neturoCrypto::GetHexEncodedKey()
 	return hexEncodedAESKey;
 }
 
-byte * neturoCrypto::GetHexEncodediv()
+CryptoPP::byte * neturoCrypto::GetHexEncodediv()
 {
 	ZeroMemory(hexEncodedAESiv, AES::BLOCKSIZE*2);
 

@@ -8,7 +8,7 @@
 // general socket wrapper class
 
 
-// to do : so_linger ó���ϱ�
+// to do : so_linger 처리하기
 
 class Socket  
 {
@@ -18,7 +18,7 @@ public:
 
 	/* logging*/
 	bool StartLog(LPTSTR filename = NULL  , bool bEncrypt = true);
-	void PrintLog(int depth , LPTSTR format, ...);
+	void PrintLog(int depth , LPCTSTR format, ...);
 	/* */
 
 	bool GetOwnership() const;
@@ -37,7 +37,7 @@ public:
 	//bool Connect(char *addr, unsigned int port);
 	//bool Connect(const sockaddr* psa, int saLen);
 
-	bool Connect(char* addr , unsigned int port , bool blocking = false);
+	bool Connect(const char* addr, unsigned int port, bool blocking = false);
 	bool Connect(const sockaddr* psa, int saLen , bool blocking = false);
 
 	bool Accept(Socket& s, sockaddr *psa=NULL, int* psaLen=NULL);
@@ -45,8 +45,8 @@ public:
 	int Send(const char* buf, unsigned int bufLen, int flags=0);
 	int Recv(char* buf, unsigned int bufLen, int flags=0);
 	bool SendExact(const char* buf, unsigned int bufLen);
-	bool RecvExact(char* buf, unsigned int bufLen);
-	bool RecvUntil(char* buf, unsigned int bufLen, char* delimit);
+	bool RecvExact(char* buf, unsigned int bufLen, int flags = 0);
+	bool RecvUntil(char* buf, unsigned int bufLen, const char* delimit);
 	bool ShutDown(int how = SD_SEND);
 
 	bool IOCtl(long cmd, unsigned long *argp);
@@ -65,16 +65,22 @@ public:
 
 	void SetTimeout(long millisecs);
 	bool SetSockOpt(int level, int optname, const char* optval, int optlen);
-	char* Socket::GetPeerName();
+	char* GetPeerName();
 	void SetCriticalSection(bool use);
 
 	BlastLog*	kLog;
 
 
+	// 마지막 recv/send 실패 시 WSA 에러 코드 (CloseSocket 전에 저장)
+	int GetLastRecvError() const { return m_lastRecvError; }
+	int GetLastSendError() const { return m_lastSendError; }
+
 protected:
-	SOCKET m_s = INVALID_SOCKET;
+	SOCKET m_s;
 	bool m_own;
-	
+	int m_lastRecvError{0};
+	int m_lastSendError{0};
+
 	CRITICAL_SECTION m_SendCS;
 	CRITICAL_SECTION m_RecvCS;
 	bool m_csuse;

@@ -6,11 +6,14 @@
  * neturoauth.h - describes the functions provided by the neturoauth library.
  */
 
-#define MAX_ID_LEN 12 // 128 -> 12
-#define MAXPWLEN 16 // 48 -> 16
+// 20170809 [프록시 ID/PW 자리 수 문제] : 프록시 ID/PW 자리수를 충분이 늘려준다 (ID : 12 -> 128, PW 16 -> 48)
+//                                        기존에 PW 자리수가 16으로 되어 있어(레지스트리에는 48) RegQueryValueEx(...,"ProxyPW",...)에서 234 오류 발생
+#define MAX_ID_LEN 256 // 128 -> 12 -> 128
+#define MAXPWLEN 256 // 48 -> 16 -> 48
+
 #define CHALLENGESIZE 16
 
-extern int neturoEncryptPasswd(char *passwd, char *fname);
-extern char *neturoDecryptPasswd(char *fname);
+extern int neturoEncryptPasswd(const char *passwd, char *fname);
+extern char *neturoDecryptPasswd(const char *fname);
 extern void neturoRandomBytes(unsigned char *bytes);
 extern void neturoEncryptBytes(unsigned char *bytes, const char *passwd);

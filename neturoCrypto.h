@@ -2,7 +2,7 @@
 #define BLASTSOCK_NETUROCRYPTO_H
 
 // neturoCrypto.h
-// aes ¾ÏÈ£È­ÇØÁØ´Ù!
+// aes ì•”í˜¸í™” í•´ì¤€ë‹¤!
 #include "./cryptopp/aes.h"
 #include "./cryptopp/randpool.h"
 #include "./cryptopp/modes.h"
@@ -30,13 +30,13 @@ public:
 	void AESEncryptString(char *ciphertext, const char *plaintext, unsigned int length);
 	void AESDecryptString(char *plaintext, const char *ciphertext, unsigned int length);
 
-	void SetAESKey(byte *HexEncodedKey);
-	void SetAESiv(byte *HexEncodediv);
+	void SetAESKey(CryptoPP::byte *HexEncodedKey);
+	void SetAESiv(CryptoPP::byte *HexEncodediv);
 	
-	byte *GetHexDecodedKey();
-	byte *GetHexDecodediv();
-	byte *GetHexEncodedKey();
-	byte *GetHexEncodediv();
+	CryptoPP::byte *GetHexDecodedKey();
+	CryptoPP::byte *GetHexDecodediv();
+	CryptoPP::byte *GetHexEncodedKey();
+	CryptoPP::byte *GetHexEncodediv();
 
 	string RSAEncryptString(const char *publicKey, const char *message);
 	string RSADecryptString(const char *privateKey, const char *ciphertext);
@@ -44,10 +44,10 @@ public:
 	RandomPool & GlobalRNG();
 private:
 //	CFB_Mode<AES >::Encryption	m_cfbEncryption;
-	byte neturoAESKey[AES::DEFAULT_KEYLENGTH]; 
-	byte neturoAESiv[AES::BLOCKSIZE];
-	byte hexEncodedAESKey[AES::DEFAULT_KEYLENGTH*2];
-	byte hexEncodedAESiv[AES::BLOCKSIZE*2];
+	CryptoPP::byte neturoAESKey[AES::DEFAULT_KEYLENGTH]; 
+	CryptoPP::byte neturoAESiv[AES::BLOCKSIZE];
+	CryptoPP::byte hexEncodedAESKey[AES::DEFAULT_KEYLENGTH*2];
+	CryptoPP::byte hexEncodedAESiv[AES::BLOCKSIZE*2];
 };
 
 #endif // #ifndef BLASTSOCK_NETUROCRYPTO_H

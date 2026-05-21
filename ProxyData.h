@@ -2,7 +2,7 @@
 #define BLASTSOCK_PROXYDATA_H
 
 // ProxyData.h
-// proxy server ¿« ¡§∫∏∏¶ ¿˙¿Â«—¥Ÿ
+// proxy serverÏùò Ï†ïÎ≥¥Î•º Í¥ÄÎ¶¨ÌïúÎã§
 
 // Proxy types
 #define PROXYTYPE_NOPROXY		0
@@ -21,16 +21,16 @@ public:
 	BOOL   SetType(DWORD dwType);
 	DWORD  GetType();
 
-	BOOL   SetProxyHost(LPSTR lpHost);
+	BOOL   SetProxyHost(LPCSTR lpHost);
 	LPSTR  GetProxyHost();
 
 	BOOL   SetProxyPort(SHORT shPort);
 	SHORT  GetProxyPort();
 
-	BOOL   SetUser(LPSTR lpUser);
+	BOOL   SetUser(LPCSTR lpUser);
 	LPSTR  GetUser();
 
-	BOOL   SetPass(LPSTR lpPass);
+	BOOL   SetPass(LPCSTR lpPass);
 	LPSTR  GetPass();
 
 	BOOL   SetAuth(BOOL bAuth);

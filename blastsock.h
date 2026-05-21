@@ -2,8 +2,7 @@
 #define BLASTSOCK_BLASTSOCK_H
 
 //#include "ProxyInfo.h"
-//#include "ProxySocket.h"
-#include "Socket.h"
+#include "ProxySocket.h"
 #include "neturoCrypto.h"
 #include "blastsocklib.h"
 #include "StringQueue.h"
@@ -12,12 +11,15 @@
 #define BLASTSOCK_PROXYQUERY			1
 #define BLASTSOCK_NO_PROXYTUNNELING		2
 #define BLASTSOCK_PROXYTUNNELING_MANUAL 3
-#define BLASTSOCK_CRYPT_CREATEAESKEY	0 // NMS °¡ CS , Viewer ¿Í Åë½ÅÇÒ¶§
-#define BLASTSOCK_CRYPT_RECVAESKEY		1 // CS , Viewer °¡ NMS ¶û Åë½ÅÇÒ¶§ 
-#define BLASTSOCK_CRYPT					2 // ±×¿Ü¿¡ ºñ¹ĞÅ°¸¦ °¡Áö°í ÀÖÀ»°æ¿ì ¾ÏÈ£È­
-#define BLASTSOCK_NO_CRYPT				3 // ¾ÏÈ£È­ÇÏÁö¾ÊÀ»¶§
+#define BLASTSOCK_CRYPT_CREATEAESKEY	0 // NMSê°€ CS, Viewerì— ì ‘ì†í• ë•Œ
+#define BLASTSOCK_CRYPT_RECVAESKEY		1 // CS, Viewerê°€ NMSì— ì ‘ì†í• ë•Œ
+#define BLASTSOCK_CRYPT					2 // ê·¸ì™¸ì— ëŒ€ì¹­í‚¤ê°€ ì´ë¯¸ì§€ ìƒì„±ë˜ì–´ ì•”í˜¸í™”
+#define BLASTSOCK_NO_CRYPT				3 // ì•”í˜¸í™”ì‚¬ìš©ì•ˆí•¨
 #define BLASTSOCK_NO_BUFFER				0
 #define BLASTSOCK_BUFFER				1
+#define BLASTSOCK_PROXYTUNNELING_DIRECTCONNECT_FIRST	1	// 20170725 [ì„œë¹„ìŠ¤ ì ‘ì† ì†ë„ ê°œì„ ]
+#define BLASTSOCK_PROXYTUNNELING_PROXYCONNECT_FIRST		2	// 20170725 [ì„œë¹„ìŠ¤ ì ‘ì† ì†ë„ ê°œì„ ]
+
 
 // ERROR CODE
 // USE WSAGetLastError();
@@ -26,9 +28,9 @@
 #define BLASTSOCK_ERROR_CRYPTBUFFEREMPTY		(WSABASEERR + 11002)
 #define BLASTSOCK_ERROR_CRYPT					(WSABASEERR + 11003)
 
-// ws2_32.lib wininet.lib urlmon.lib Advapi32.lib Shell32.lib ¸¦ include ÇØÁØ´Ù
+// ws2_32.lib wininet.lib urlmon.lib Advapi32.lib Shell32.libì„ include í•´ì¤€ë‹¤
 
-class blastsock : public Socket 
+class blastsock : public ProxySocket
 {
 public:
 	blastsock();
@@ -48,12 +50,14 @@ public:
 					   bool fromIE = false,
 					   bool regsave = false,
 					   bool cfileown = false,
-					   HKEY hKeyParent = HKEY_CURRENT_USER, 
+					   HKEY hKeyParent = HKEY_CURRENT_USER,
 					   LPCSTR lpszKeyName = NULL);
 	bool IsProxyEnv();
-	bool Connect(char *addr, unsigned int port);
+	bool Connect(const char *addr, unsigned int port);
+    bool ConnectDirect(const char* addr, unsigned int port); // 20170725 [ì„œë¹„ìŠ¤ ì ‘ì† ì†ë„ ê°œì„ ]
+    bool ConnectProxy(const char* addr, unsigned int port);   // 20170725 [ì„œë¹„ìŠ¤ ì ‘ì† ì†ë„ ê°œì„ ]
 
-	// AES ¾ÏÈ£È­ Àû¿ë SEND , RECV
+	// AES ì•”í˜¸í™” ì ìš© SEND, RECV
 	bool SendExact(const char* buf, unsigned int bufLen, unsigned int usebuf = BLASTSOCK_NO_BUFFER);
 	bool RecvExact(char* buf, unsigned int bufLen, unsigned int usebuf = BLASTSOCK_NO_BUFFER, int flags = 0);
 
@@ -63,72 +67,34 @@ public:
 
 	void CheckProxyEnvironment(HKEY hKeyParent, LPCSTR lpszKeyName);
 	bool WinInetConnect(char *strRetVal, int nRetValSize, char *strAgent, char *strServerAddr, int nServerPort, char *strUrl, HKEY hKeyParent, LPCSTR lpszKeyName);
+	void SetProxyTunnelingConnectionOption(int proxytunnelingConnectOption) { m_proxytunnelingConnectOption = proxytunnelingConnectOption; }	// 20170725 [ì„œë¹„ìŠ¤ ì ‘ì† ì†ë„ ê°œì„ ]
+	int GetProxyTunnelingConnectionOption() { return m_proxytunnelingConnectOption; }						// 20170725 [ì„œë¹„ìŠ¤ ì ‘ì† ì†ë„ ê°œì„ ]
 
 private :
 	BOOL IsWinXPorLater();
 	HANDLE GetToken();
-	BOOL GetLogPath(TCHAR * savePath);
 protected:
 	// Proxy Tunneling Variable
 	int m_tunnelingmode;
-	//CProxyInfo* m_pProxyinfo;	// ÇÁ·Ï½Ã È¯°æ ÆÇ´Ü ¹× ¼­¹ö ¾ò¾î¿À±â
-	bool m_proxyinfoown;		// 
-	//CProxyData* m_pProxydata;	// Proxy Server Address Array
+	//CProxyInfo* m_pProxyinfo;	// í”„ë¡ì‹œ í™˜ê²½ íŒë‹¨ ì‹œ ì‚¬ìš© ë°ì´í„°
+	bool m_proxyinfoown;		//
+	CProxyData* m_pProxydata;	// Proxy Server Address Array
 	int m_proxydataLen;
-	
+
 	// AES Crypt Variable
-	int m_cryptmode;			// ¾ÏÈ£È­ ÇÏ´ÂÁö ¿©ºÎ
-	neturoCrypto* m_pCryptlib;	// ½ÇÁ¦ ¾ÏÈ£È­ ´ã´ç
-	bool m_cryptown;			// m_cryptlib ¸¦ Å¬·¡½º³»¿¡¼­ »ı¼ºÇß´ÂÁö¿©ºÎ
-	StringQueue* m_pCryptqueue;		// ¹öÆÛ¸µ ¸ğµåÀÏ¶§ »ç¿ëÇÏ´Â ¹öÆÛ
+	int m_cryptmode;			// ì•”í˜¸í™” í•˜ëŠ”ì§€ ì—¬ë¶€
+	neturoCrypto* m_pCryptlib;	// ì‹¤ì œ ì•”í˜¸í™” ë¼ì´ë¸ŒëŸ¬ë¦¬
+	bool m_cryptown;			// m_cryptlibì„ í´ë˜ìŠ¤ì—ì„œ ìƒì„±í–ˆëŠ”ì§€ ì—¬ë¶€
+	StringQueue* m_pCryptqueue;	// ë²„í¼ë¥¼ ì‚¬ìš©í• ë•Œ ì‚¬ìš©í•˜ëŠ” í
 	char* m_lpSendCryptBuf;
 	char* m_lpRecvCryptBuf;
 	char* m_lpRecvCryptBuf2;
 	static const int CRYPTBUFFERSIZE;
-//	CProxyData* m_pSelectedProxyData;
+	CProxyData* m_pSelectedProxyData;
 	bool m_bManualProxy;
 
-
-	//proxy tunneling
-	int m_bUseProxy;
-	char m_szProxyIP[64];
-	char m_szProxyID[32];
-	char m_szProxyPW[32];
-	int m_nProxyPort;
-
-
-	bool ConnecToProxyTunnel(char* host, int port);
-	bool ConnectHTTP11(char *host, unsigned short port);
-	bool ConnectSOCKS4(char *host, unsigned short port);
-	bool ConnectSOCKS5(char *host, unsigned short port);
-
-	BOOL MakeDigestResponse(char *msg, char* host, int port);
-	void	AuthenticatorGetNewCnonce(char	*pCNonce);
-	char*	getDigest(char	*data, char	*out);
-
-	//Digest Auth
-	char				m_szrealm[50];
-	char				m_sznonce[150];
-	char				m_szcnonce[150];
-	char				m_szresponse[256];
-	int					m_nonceCount;
-	char				m_szqop[50];
-	char				m_szopaque[50];
-
-	//NTLM
-	char ntlm_hostname[256];
-	char ntlm_domain[256];
-	char ntlm_userid[256];
-	char ntlm_userpw[256];
-
-	byte  ntlmMsg2Flags[4];
-	unsigned char  nounce[8];
-	BOOL GetNtlmSsp_Change_Key(char *key, char * msg);
-
-	int create_NtlmSsp_Negotiate(char * msgbuf, int * len, char* hostname, char* domain);
-	int GetNonceFromChange_Key(char * msgbuf, int * len);
-	int Create_NtlmSsp_Auth(char * msgbuf, int * len);
-	
+	int m_proxytunnelingConnectOption; // 20170725 [ì„œë¹„ìŠ¤ ì ‘ì† ì†ë„ ê°œì„ ] : proxyë¡œ ì ‘ì† ì‹œ direct / proxyì¤‘ ì–´ëŠ ë°©ì‹ì„ ë¨¼ì € ì‹œë„í• ì§€ ê²°ì •í•˜ëŠ” ëª¨ë“œ
+									   // ìµœì´ˆì—ëŠ” socketì„ ê°–ê³  ìˆëŠ” Processì˜ ì²˜ìŒì— ì„¤ì •ëœ ëª¨ë“œë¥¼ ì‚¬ìš©í•˜ê³  ì´í›„ socketë§ˆë‹¤ ì„¤ì •ë˜ì–´ ìˆëŠ” ëª¨ë“œë¥¼ ê·¸ëŒ€ë¡œ ì‚¬ìš©í•œë‹¤.
 };
 
 #endif // #ifndef BLASTSOCK_BLASTSOCK_H

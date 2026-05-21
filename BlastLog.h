@@ -85,7 +85,7 @@ public:
 	};
 
 	//void Print(int depth , LPTSTR format, ...)
-	void Print(int depth ,  LPTSTR format, va_list ap)
+	void Print(int depth ,  LPCTSTR format, va_list ap)
 	{
 		if (hlogfile == INVALID_HANDLE_VALUE || hlogfile == NULL) 
 			return;
@@ -115,7 +115,7 @@ private:
 		}
 	};
 	
-	void ReallyPrint(int depth  , LPTSTR format, va_list ap)
+	void ReallyPrint(int depth  , LPCTSTR format, va_list ap)
 	{
 		time_t current = time(0);
 		char time_str[32];

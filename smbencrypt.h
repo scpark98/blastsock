@@ -1,6 +1,6 @@
 #pragma once
 
-#include "smades.h"
+#include "stdafx.h"
 
 #define CVAL(buf,pos) (((unsigned char *)(buf))[pos])
 #define PVAL(buf,pos) ((unsigned)CVAL(buf,pos))

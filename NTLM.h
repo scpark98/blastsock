@@ -48,55 +48,59 @@ struct ntlm_msg1 {
     unsigned char host_len[4];
     unsigned char host_off[4];
 	
+//	unsigned char flags2[8];   //5,1,40,10,0,0,0,15
+#if 0
+    unsigned char data[0];
+#endif
 }; /*__attribute__((packed))*/
 
 struct ntlm_msg2 {
-	byte    protocol[8];     // 'N', 'T', 'L', 'M', 'S', 'S', 'P', '\0'
-    byte    type;            // 0x02
-    byte    zero1[7];
+    ::byte    protocol[8];     // 'N', 'T', 'L', 'M', 'S', 'S', 'P', '\0'
+    ::byte    type;            // 0x02
+    ::byte    zero1[7];
     short   msg_len;         // 0x28
-    byte    zero2[2];
-    byte    flags[4];
-    byte    nonce[8];        // nonce
-    byte    zero4[8];
+    ::byte    zero2[2];
+    ::byte    flags[4];
+    ::byte    nonce[8];        // nonce
+    ::byte    zero4[8];
 
 };
 
 struct ntlm_msg3 {
-	byte    protocol[8];     // 'N', 'T', 'L', 'M', 'S', 'S', 'P', '\0'
-    byte    type;            // 0x03
-    byte    zero1[3];
+    ::byte    protocol[8];     // 'N', 'T', 'L', 'M', 'S', 'S', 'P', '\0'
+    ::byte    type;            // 0x03
+    ::byte    zero1[3];
 
     short   lm_resp_len1;     // LanManager response length (always 0x18)
     short   lm_resp_len2;     // LanManager response length (always 0x18)
     short   lm_resp_off;     // LanManager response offset
-    byte    zero2[2];
+    ::byte    zero2[2];
 
     short   nt_resp_len1;     // NT response length (always 0x18)
     short   nt_resp_len2;     // NT response length (always 0x18)
     short   nt_resp_off;     // NT response offset
-    byte    zero3[2];
+    ::byte    zero3[2];
 
     short   dom_len1;         // domain string length
     short   dom_len2;         // domain string length
     short   dom_off;         // domain string offset (always 0x40)
-    byte    zero4[2];
+    ::byte    zero4[2];
 
     short   user_len1;        // username string length
     short   user_len2;        // username string length
     short   user_off;        // username string offset
-    byte    zero5[2];
+    ::byte    zero5[2];
 
     short   host_len1;        // host string length
     short   host_len2;        // host string length
     short   host_off;        // host string offset
-    byte    zero6[6];
+    ::byte    zero6[6];
 
     short   msg_len;         // message length
-    byte    zero7[2];
+    ::byte    zero7[2];
 
-    byte   flags[2];           // 0x05,0x82,0x88,0xa2,5,1,40,10,0,0,0,15
-    byte   zero8[2];
+    ::byte   flags[2];           // 0x05,0x82,0x88,0xa2,5,1,40,10,0,0,0,15
+    ::byte   zero8[2];
 
 
 };
@@ -145,4 +149,37 @@ static int encode[] =
   'o', 'p', 'q', 'r', 's', 't', 'u', 'v',
   'w', 'x', 'y', 'z', '0', '1', '2', '3',
   '4', '5', '6', '7', '8', '9', '+', '/'
+};
+
+class NTLM
+{
+public:
+	NTLM(void);
+	~NTLM(void);
+
+	char username[MAX_USERLEN + 1];
+	char psw[MAX_PSWLEN+1];
+	char myhostname[MAX_HOSTLEN + 1];
+	char domain[MAX_DOMLEN + 1];
+
+	::byte  msg2flags[4];  
+	unsigned char  nounce[8];
+
+	unsigned char lm[RESP_LEN];
+    unsigned char nt[RESP_LEN];
+
+public:
+	int ntlm_msg_type(unsigned char *raw_msg, unsigned msglen);
+
+	int ntlm_extract_mem( unsigned char *dst,
+					unsigned char *src, unsigned srclen,
+					unsigned char *off, unsigned char *len,
+					unsigned max);
+	int ntlm_extract_string( unsigned char *dst,
+						unsigned char *src, unsigned srclen,
+						unsigned char *off, unsigned char *len,
+						unsigned max);
+	int ntlm_create_msg1( char * msgbuf, int * len);   // C->S : Type1 메시지 생성
+	int ntlm_extract_msg2( char * msgbuf, int * len);   // S->C : Type2 메시지 파싱
+	int ntlm_create_msg3( char * msgbuf, int * len);   // C->S : Tpye3 메시지 생성
 };

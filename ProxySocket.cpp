@@ -7,331 +7,58 @@
 #include "ProxySocket.h"
 #include "base64.h"
 #include "WinINetDownLoader.h"
-#include "NTLM.h"
-#include "AllNTLM.h"
-#include "md4.h"
-#include "md5c.h"
-#include "smbencrypt.h"
-
-
-//MD5 Implementation
-#define S11		7
-#define S12		12
-#define S13		17
-#define S14		22
-#define S21		5
-#define S22		9
-#define S23		14
-#define S24		20
-#define S31		4
-#define S32		11
-#define S33		16
-#define S34		23
-#define S41		6
-#define S42		10
-#define S43		15
-#define S44		21
-
-
-void MD5Transform(UINT4[4], unsigned char[64]);
-void Encode(unsigned char *, UINT4 *, unsigned int);
-void Decode(UINT4 *, unsigned char *, unsigned int);
-void MD5_memcpy(POINTER, POINTER, unsigned int);
-void MD5_memset(POINTER, int, unsigned int);
-
-
-static unsigned char PADDING[64] = {
-	0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-};
-
-/* F, G, H and I are basic MD5 functions.
-*/
-#ifndef MD5_F
-#define MD5_F(x, y, z) (((x) & (y)) | ((~x) & (z)))
-#endif
-
-#ifndef MD5_G
-#define MD5_G(x, y, z) (((x) & (z)) | ((y) & (~z)))
-#endif
-
-#ifndef MD5_H
-#define MD5_H(x, y, z) ((x) ^ (y) ^ (z))
-#endif
-
-#ifndef MD5_I
-#define MD5_I(x, y, z) ((y) ^ ((x) | (~z)))
-#endif
-
-
-
-/* ROTATE_LEFT rotates x left n bits.
-*/
-#define ROTATE_LEFT(x, n) (((x) << (n)) | ((x) >> (32-(n))))
-
-/* FF, GG, HH, and II transformations for rounds 1, 2, 3, and 4.
-Rotation is separate from addition to prevent recomputation.
-*/
-#define FF(a, b, c, d, x, s, ac) { \
-	(a) += MD5_F ((b), (c), (d)) + (x) + (UINT4)(ac); \
-	(a) = ROTATE_LEFT ((a), (s)); \
-	(a) += (b); \
-	}
-#define GG(a, b, c, d, x, s, ac) { \
-	(a) += MD5_G ((b), (c), (d)) + (x) + (UINT4)(ac); \
-	(a) = ROTATE_LEFT ((a), (s)); \
-	(a) += (b); \
-	}
-#define HH(a, b, c, d, x, s, ac) { \
-	(a) += MD5_H ((b), (c), (d)) + (x) + (UINT4)(ac); \
-	(a) = ROTATE_LEFT ((a), (s)); \
-	(a) += (b); \
-	}
-#define II(a, b, c, d, x, s, ac) { \
-	(a) += MD5_I ((b), (c), (d)) + (x) + (UINT4)(ac); \
-	(a) = ROTATE_LEFT ((a), (s)); \
-	(a) += (b); \
-	}
-
-#define EPOCHDELTA	(ULONGLONG)(116444736000000000)
-//* end of MD5 
-
-unsigned int	TIMER_GetTimeInMilliseconds(void);
-
-unsigned int	TIMER_GetTimeInMilliseconds(void)
-{
-	unsigned int t;
-	SYSTEMTIME	systime;
-	FILETIME	filetime;
-	ULARGE_INTEGER	*uint_time;
-
-	GetSystemTime(&systime);
-	SystemTimeToFileTime(&systime, &filetime);
-
-	uint_time = (ULARGE_INTEGER *)&filetime;
-	uint_time->QuadPart = uint_time->QuadPart - EPOCHDELTA;
-
-	t = (unsigned int)(uint_time->QuadPart / 10000Ui64);
-
-	return (t == 0xffffffff) ? 0 : t;
-}
-
-
-static const char cb64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-static const unsigned char pr2six[256] =
-{
-	64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
-	64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
-	64, 64, 64, 64, 64, 64, 64, 64, 64, 62, 64, 64, 64, 63, 52, 53, 54,
-	55, 56, 57, 58, 59, 60, 61, 64, 64, 64, 64, 64, 64, 64, 0, 1, 2, 3,
-	4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
-	22, 23, 24, 25, 64, 64, 64, 64, 64, 64, 26, 27, 28, 29, 30, 31, 32,
-	33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49,
-	50, 51, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
-	64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
-	64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
-	64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
-	64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
-	64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
-	64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
-	64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64
-};
-
-static void encodeblock(unsigned char in[3], unsigned char out[4], int len)
-{
-	out[0] = cb64[in[0] >> 2];
-	out[1] = cb64[((in[0] & 0x03) << 4) | ((in[1] & 0xf0) >> 4)];
-	out[2] = (unsigned char)(len > 1 ? cb64[((in[1] & 0x0f) << 2) | ((in[2] & 0xc0) >> 6)] : '=');
-	out[3] = (unsigned char)(len > 2 ? cb64[in[2] & 0x3f] : '=');
-}
-
-void base64(char *dst, const char *src, int sz)
-{
-	unsigned char in[3];
-	unsigned char *out = (unsigned char*)dst;
-	int i, len;
-
-	while (sz > 0)
-	{
-		len = 0;
-		for (i = 0; i < 3; i++, sz--)
-		{
-			if (sz > 0)
-			{
-				len++;
-				in[i] = src[i];
-			}
-			else
-				in[i] = 0;
-		}
-		src += 3;
-		if (len)
-		{
-			encodeblock(in, out, len);
-			out += 4;
-		}
-	}
-	*out = '\0';
-}
-
-static  int uuencode_binary(char *encoded, unsigned char *string, int len)
-{
-
-	const unsigned char *s, *end;
-	unsigned char *buf;
-	unsigned int x;
-	int n;
-	int i, j;
-
-	if (len == 0)
-		return 0;
-
-	end = (const unsigned char *)((char *)string + len - 3);
-
-	buf = (unsigned char *)malloc(4 * ((len + 2) / 3) + 1);
-	if (buf == NULL)
-		return -1;
-
-	n = 0;
-
-	for (s = (const unsigned char *)string; s < end;)
-	{
-		x = *s++ << 24;
-		x |= *s++ << 16;
-		x |= *s++ << 8;
-
-		*buf++ = encode[x >> 26];
-		x <<= 6;
-		*buf++ = encode[x >> 26];
-		x <<= 6;
-		*buf++ = encode[x >> 26];
-		x <<= 6;
-		*buf++ = encode[x >> 26];
-		n += 4;
-	}
-
-	end += 3;
-
-	x = 0;
-	for (i = 0; s < end; i++)
-		x |= *s++ << (24 - 8 * i);
-
-	for (j = 0; j < 4; j++)
-	{
-		if (8 * i >= 6 * j)
-		{
-			*buf++ = encode[x >> 26];
-			x <<= 6;
-			n++;
-		}
-		else
-		{
-			*buf++ = '=';
-			n++;
-		}
-	}
-
-	*buf = 0;
-
-	//encoded = (char*)(buf - n);
-	memcpy(encoded, buf - n, n);
-	return n;
-}
-
-static void  uudecode_binary(/*apr_pool_t * p,*/char * bufplain, const char *bufcoded, int *nbytesdecoded)
-{
-	const unsigned char *bufin;
-
-	unsigned char *bufout;
-	int nprbytes;
-
-	/* Strip leading whitespace. */
-
-	while (*bufcoded == ' ' || *bufcoded == '\t')
-		bufcoded++;
-
-	/* Figure out how many characters are in the input buffer.
-	* Allocate this many from the per-transaction pool for the
-	* result. */
-#ifndef CHARSET_EBCDIC
-	bufin = (const unsigned char *)bufcoded;
-	while (pr2six[*(bufin++)] <= 63);
-	nprbytes = (bufin - (const unsigned char *)bufcoded) - 1;
-	*nbytesdecoded = ((nprbytes + 3) / 4) * 3;
-
-	// bufplain = apr_palloc(p, *nbytesdecoded + 1);
-	bufout = (unsigned char *)bufplain;
-
-	bufin = (const unsigned char *)bufcoded;
-
-	while (nprbytes > 0) {
-		*(bufout++) =
-			(unsigned char)(pr2six[*bufin] << 2 | pr2six[bufin[1]] >> 4);
-		*(bufout++) =
-			(unsigned char)(pr2six[bufin[1]] << 4 | pr2six[bufin[2]] >> 2);
-		*(bufout++) =
-			(unsigned char)(pr2six[bufin[2]] << 6 | pr2six[bufin[3]]);
-		bufin += 4;
-		nprbytes -= 4;
-	}
-
-	if (nprbytes & 03) {
-		if (pr2six[bufin[-2]] > 63)
-			*nbytesdecoded -= 2;
-		else
-			*nbytesdecoded -= 1;
-	}
-	bufplain[*nbytesdecoded] = '\0';
-#else /* CHARSET_EBCDIC */
-	bufin = (const unsigned char *)bufcoded;
-	while (pr2six[os_toascii[(unsigned char) *(bufin++)]] <= 63);
-	nprbytes = (bufin - (const unsigned char *)bufcoded) - 1;
-	*nbytesdecoded = ((nprbytes + 3) / 4) * 3;
-
-	bufplain = apr_palloc(p, *nbytesdecoded + 1);
-	bufout = (unsigned char *)bufplain;
-
-	bufin = (const unsigned char *)bufcoded;
-
-	while (nprbytes > 0) {
-		*(bufout++)
-			= os_toebcdic[(unsigned char)(pr2six[os_toascii[*bufin]]
-				<< 2 | pr2six[os_toascii[bufin[1]]]
-				>> 4)];
-		*(bufout++)
-			= os_toebcdic[(unsigned char)(pr2six[os_toascii[bufin[1]]]
-				<< 4 | pr2six[os_toascii[bufin[2]]]
-				>> 2)];
-		*(bufout++)
-			= os_toebcdic[(unsigned char)(pr2six[os_toascii[bufin[2]]]
-				<< 6 | pr2six[os_toascii[bufin[3]]])];
-		bufin += 4;
-		nprbytes -= 4;
-	}
-
-	if (nprbytes & 03) {
-		if (pr2six[os_toascii[bufin[-2]]] > 63)
-			*nbytesdecoded -= 2;
-		else
-			*nbytesdecoded -= 1;
-	}
-	bufplain[*nbytesdecoded] = '\0';
-#endif /* CHARSET_EBCDIC */
-	//return bufplain;
-}
-
 
 
 
 
 USING_NAMESPACE(CryptoPP)
+
+static const char cb64[]="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+static void 
+encodeblock( unsigned char in[3], unsigned char out[4], int len )
+{
+    out[0] = cb64[ in[0] >> 2 ];
+    out[1] = cb64[ ((in[0] & 0x03) << 4) | ((in[1] & 0xf0) >> 4) ];
+    out[2] = (unsigned char) (len > 1 ? cb64[ ((in[1] & 0x0f) << 2) | ((in[2] & 0xc0) >> 6) ] : '=');
+    out[3] = (unsigned char) (len > 2 ? cb64[ in[2] & 0x3f ] : '=');
+}
+
+void 
+base64( char *dst, const char *src, int sz )
+{
+    unsigned char in[3];
+	unsigned char *out = (unsigned char*)dst;
+    int i, len;
+	
+    while (sz > 0)
+    {
+        len = 0;
+        for (i = 0; i < 3; i++, sz--)
+        {
+            if (sz > 0)
+            {
+                len++;
+                in[i] = src[i];
+            } else
+                in[i] = 0;
+        }
+        src += 3;
+        if (len)
+        {
+            encodeblock(in, out, len);
+            out += 4;
+        }
+    }
+    *out = '\0';
+}
+
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
 
 ProxySocket::ProxySocket() : Socket()
 {
+	m_proxyUnAuthorized = false;
 }
 	
 ProxySocket::~ProxySocket()
@@ -343,12 +70,32 @@ void ProxySocket::SetProxyData(CProxyData& ProxyData)
 	m_ProxyData = ProxyData;
 }
 
-bool ProxySocket::Connect(char *addr, unsigned int port)
+bool ProxySocket::Connect(const char* addr, unsigned int port)
 {
-	Socket::CloseSocket();
-	Socket::Create();
-
 	bool result = false;
+
+// 	char m_proxyAuthID[64];
+// 	char m_proxyAuthPW[64];
+// 	
+// 	memset(m_proxyAuthID , 0x00 , sizeof(m_proxyAuthID));
+// 	memset(m_proxyAuthPW , 0x00 , sizeof(m_proxyAuthPW));
+// 	
+// 	sprintf(buf, "*** ProxySocket::Connect ***\n");
+// 	DbgOutA(buf);
+// 	GetProxyIDPW(m_proxyAuthID, m_proxyAuthPW);
+// 	
+// 	sprintf(buf, "*** ProxySocket id:%s, pw:%s ***\n", m_proxyAuthID, m_proxyAuthPW);
+// 	DbgOutA(buf);
+// 	if(strlen(m_proxyAuthID) > 0 )
+// 	{
+// 		m_ProxyData.SetAuth(TRUE);
+// 		m_ProxyData.SetUser(m_proxyAuthID);
+// 		m_ProxyData.SetPass(m_proxyAuthPW);
+// 	}
+
+	// 		m_ProxyData.SetAuth(TRUE);
+// 		m_ProxyData.SetUser(m_proxyAuthID);
+// 		m_ProxyData.SetPass(m_proxyAuthPW);
 
 	switch(m_ProxyData.GetType())
 	{
@@ -369,19 +116,6 @@ bool ProxySocket::Connect(char *addr, unsigned int port)
 	case PROXYTYPE_HTTP11QUERY:
 		Socket::PrintLog(4 , "ProxySocket::Connect(%s , %d) (PROXYTYPE_HTTP11) Start\r\n" , addr , port);
 		result = ConnectHTTP11(addr, port);
-
-		if (result == false)
-		{
-			//2)SOCKS4
-			result = ConnectSOCKS4(addr, port);
-		}
-
-		if (result) //SOCKS4 성공시 
-			break;
-
-		//3)SOCKS5로 시도
-		result = ConnectSOCKS5(addr, port);
-		
 		break;
 	}
 	
@@ -398,16 +132,15 @@ bool ProxySocket::Connect(char *addr, unsigned int port)
 	return result;
 }
 
-bool ProxySocket::ConnectNOPROXY(char *addr, unsigned int port)
+bool ProxySocket::ConnectNOPROXY(const char* addr, unsigned int port)
 {
-	
 	Socket::PrintLog(5 , "ProxySocket::ConnectNOPROXY(%s , %d) Start\r\n" , addr , port);
 	if(Socket::Connect(addr, port)) return true;
 	WSASetLastError(PROXYSOCKET_ERROR_NOCONN);
 	return false;
 }
 
-bool ProxySocket::ConnectSOCKS4(char *addr, unsigned int port)
+bool ProxySocket::ConnectSOCKS4(const char* addr, unsigned int port)
 {
 	Socket::PrintLog(5 , "ProxySocket::ConnectSOCKS4(%s , %d) Start\r\n" , addr , port);
 	Socket::PrintLog(5 , "Socket::Connect to Proxy(%s , %d) \r\n" , m_ProxyData.GetProxyHost() , m_ProxyData.GetProxyPort());
@@ -510,7 +243,7 @@ bool ProxySocket::ConnectSOCKS4(char *addr, unsigned int port)
 	return true;
 }
 
-bool ProxySocket::ConnectSOCKS5(char *addr, unsigned int port)
+bool ProxySocket::ConnectSOCKS5(const char* addr, unsigned int port)
 {
 	Socket::PrintLog(5 , "ProxySocket::ConnectSOCKS5(%s , %d) Start\r\n" , addr , port);
 	Socket::PrintLog(5 , "Socket::Connect to Proxy(%s , %d) \r\n" , m_ProxyData.GetProxyHost() , m_ProxyData.GetProxyPort());
@@ -701,403 +434,322 @@ bool ProxySocket::ConnectSOCKS5(char *addr, unsigned int port)
 	// connection established OK
 }
 
-
-bool ProxySocket::ConnectHTTP11(char *host, unsigned int port)
+bool ProxySocket::ConnectHTTP11(const char* addr, unsigned int port)
 {
-	int result;
+	Socket::PrintLog(5 , "ProxySocket::ConnectHTTP11(%s , %d) start\r\n" , addr , port);
+	Socket::PrintLog(5 , "Socket::Connect to Proxy(%s , %d) \r\n" , m_ProxyData.GetProxyHost() , m_ProxyData.GetProxyPort());
 
-	Socket::PrintLog(5, "[SOCKET]ConnectHTTP11 Start (%s , %d)" , m_ProxyData.GetProxyHost(), m_ProxyData.GetProxyPort() );
+	// 테스트 
+	char tempAddr[256] = "";
+	int tempport = port;
+	strcpy(tempAddr, addr);
 
-	if (!Socket::Connect(m_ProxyData.GetProxyHost(), m_ProxyData.GetProxyPort()))
+	if(!Socket::Connect(m_ProxyData.GetProxyHost(), m_ProxyData.GetProxyPort()))
 	{
-		Socket::PrintLog(5, "[Error]Fail Socket::Connect to Proxy(%s , %d) \r\n", m_ProxyData.GetProxyHost(), m_ProxyData.GetProxyPort());
-
+		Socket::PrintLog(5 , "[Error]Fail Socket::Connect to Proxy(%s , %d) \r\n" , m_ProxyData.GetProxyHost() , m_ProxyData.GetProxyPort());
+		
 		WSASetLastError(PROXYSOCKET_ERROR_NOCONN);
 		return false;
 	}
 
-	/*
-	if (m_ProxyData.GetType() == PROXYTYPE_HTTP11QUERY)
+	if(m_ProxyData.GetType() == PROXYTYPE_HTTP11QUERY)
 	{
-		Socket::PrintLog(5, "[Error] m_ProxyData.GetType() == PROXYTYPE_HTTP11QUERY \r\n");
-		m_ProxyData.SetDestinationHost(host);
+		Socket::PrintLog(5 , "[Error] m_ProxyData.GetType() == PROXYTYPE_HTTP11QUERY \r\n" );
+		m_ProxyData.SetDestinationHost(addr);
 		m_ProxyData.SetDestinationPort(port);
 		return true;
 	}
 
+	/*
+	CHAR Packet[1024];
+	ZeroMemory(Packet, 1024);
+
+	char msgbuf[1024];
+	int msgbuflen = sizeof(msgbuf);
+	int msglen;
+	ZeroMemory(msgbuf, 1024);
 	*/
 
-	Socket::PrintLog(5, "[SOCKET] Success Connect  (%s , %d)", m_ProxyData.GetProxyHost(), m_ProxyData.GetProxyPort());
+	CHAR Packet[4096];
+	ZeroMemory(Packet, 4096);
+	
+	char msgbuf[4096];
+	int msgbuflen = sizeof(msgbuf);
+	int msglen;
+	ZeroMemory(msgbuf, 4096);
+	int idx;
 
-	char buffer[4096] = { 0, };
-	char temp[4096] = { 0, };
+	
 
-	sprintf(buffer,
-		"CONNECT %s:%d HTTP/1.0\r\n"
-		"User-Agent: Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1;"
-		" SV1; .NET CLR 2.0.50727; .NET CLR 3.0.04506.30; .NET CLR 1.1.4322)\r\n"
-		"Host: %s:%d\r\n"
-		"Content-Length: 0\r\n"
-		"Proxy-Connection: Keep-Alive\r\n"
-		"Pragma: no-cache\r\n\r\n",
-		host, port, host, port);
+	if(!m_ProxyData.GetAuth())
+	{	// not authentication
+		//sprintf(Packet, "CONNECT %s:%d HTTP/1.0\r\nHost: %s:%d\r\n\r\n", addr, port, addr, port);
+		sprintf(Packet, 
+			"CONNECT %s:%d HTTP/1.0\r\n"
+			"User-Agent:Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1;"
+			" SV1; .NET CLR 2.0.50727; .NET CLR 3.0.04506.30; .NET CLR 1.1.4322)\r\n"
+			"Host: %s\r\n"
+			"Content-Length: 0\r\n"
+			"Proxy-Connection: Keep-Alive\r\n"
+			"Pragma:no-cache\r\n\r\n",
+			tempAddr, port, tempAddr);
 
-
-	Socket::PrintLog(5, "Send  PROXYTYPE_HTTP11 request \r\n");
-	if (!SendExact(buffer, strlen(buffer)))
-	{
-		Socket::PrintLog(5, "[Error] Could not Send  PROXYTYPE_HTTP11 request \r\n");
-		WSASetLastError(PROXYSOCKET_ERROR_REQUESTFAILED);
-		return false;
+		Socket::PrintLog(5 , "No Auth Mode : %s \r\n" , Packet);
 	}
+	else
+	{	// use authentication
+		//	sprintf(Packet, "CONNECT %s:%d HTTP/1.0\r\nHost: %s:%d\r\n", addr, port, addr, port);
+// 		
+// 		LPSTR lpUserPass = new CHAR[strlen(m_ProxyData.GetUser()) + strlen(m_ProxyData.GetPass()) + 2];
+// 		ZeroMemory(lpUserPass, strlen(m_ProxyData.GetUser()) + strlen(m_ProxyData.GetPass()) + 2);
+// 		sprintf(lpUserPass, "%s:%s", m_ProxyData.GetUser(), m_ProxyData.GetPass());
+// 		
+// 		byte* encoded = new byte[strlen(lpUserPass)*4+1];
+// 		memset(encoded, 0, strlen(lpUserPass)*4+1);
+// 		
+// 		Base64Encoder base64Encoder;
+// 		base64Encoder.Put((unsigned char*)lpUserPass, strlen(lpUserPass));
+// 		base64Encoder.MessageEnd();
+// 		base64Encoder.Get(encoded, strlen(lpUserPass)*4);
 
-	ZeroMemory(buffer, sizeof(buffer));
-
-	// recv Response
-	if (!RecvUntil(buffer, 4096, "\r\n"))
-	{
-		Socket::PrintLog(5, "[Error] Could not recv  PROXYTYPE_HTTP11 response \r\n");
-		WSASetLastError(PROXYSOCKET_ERROR_REQUESTFAILED);
-		return false;
-	}
-
-	Socket::PrintLog(5, "%s\r\n", buffer);
-
-
-
-	char *p = NULL;
-	char *p2 = NULL;
-	int len = 0;
-	char szAuthCode[16] = { 0 , };
-
-	p = strstr(buffer, " ");
-
-	if (p == NULL)
-		return false;
-
-	p2 = strstr(p + 1, " ");
-
-	if (p2 == NULL)
-		return false;
-
-	len = (unsigned int)p2 - ((unsigned int)p + 1);
-
-	memcpy(szAuthCode, p + 1, len);
-	DWORD dwStatusCode = atoi(szAuthCode);
-
-	if (dwStatusCode == 200)
-	{
-		Socket::PrintLog(5, "[SOCKET]Success ConnectHTTP11 200OK");
-		return true;
-	}
-	else if (dwStatusCode == 401 || dwStatusCode == 407)
-	{
-		//BASIC 인지 NTLM 인지 확인하여 인증정보를 넣어서 보낸다.
-		p = NULL;
-		p = strstr(buffer, "Proxy-Authenticate: ");
-
-		if (p == NULL)
+		Socket::PrintLog(5 , "Auth Mode Start \r\n");
+/*
+		if(!(m_ProxyData.GetUser()!=NULL && strlen(m_ProxyData.GetUser()) >0 && m_ProxyData.GetPass()!=NULL && strlen(m_ProxyData.GetPass())>0)) 
 		{
-			p = strstr(buffer, "proxy-authenticate: ");
+			Socket::PrintLog(5 , "Auto Mode, but id or pw invalid\r\n");
+			return false;
 		}
+*/
+		char user_pass[256];
+		char encoded[512];
 
-		if (p != NULL)
+		// 프록시 Basic Key를 만든다.
+		int wlen = _snprintf(user_pass, 256, "%s:%s", m_ProxyData.GetUser(), m_ProxyData.GetPass());
+		base64(encoded, user_pass, wlen);
+
+		/*
+		strcat(Packet, "Authorization: Basic ");
+		memcpy(Packet + strlen(Packet), encoded, strlen(lpUserPass)*4);
+		strcat(Packet, "\r\n");
+		strcat(Packet, "Proxy-Authorization: Basic ");
+		memcpy(Packet + strlen(Packet), encoded, strlen(lpUserPass)*4);
+		strcat(Packet, "\r\n\r\n");
+		*/	
+		//sprintf((char*)encoded, "cmFpbm1ha2VyOnJsYWd5Y2pm");
+
+		// NTLM 유저일 경우에는 도메인\유저네임 식으로 아이디가 구성이 되어 있다.
+		// 도메인과 유저네임을 파싱한다.
+		/*
+		char account[256];
+		char domain[256];
+		char username[256];
+		ZeroMemory(account, sizeof(account));
+		ZeroMemory(domain, sizeof(domain));
+		ZeroMemory(username, sizeof(username));
+		
+		strcpy(account, m_ProxyData.GetUser());
+		if(strstr(account, "\\") != NULL)
 		{
-			p2 = strstr(p, " ");
-
-			if (p2 == NULL)
-				return false;
-
-			p = strstr(p2 + 1, "\r\n");
-
-			if (p == NULL)
-				return false;
-
-			len = ((unsigned int)p - 2) - (unsigned int)p2 + 1;
-			char header[1024];
-			memset(header, 0, sizeof(header));
-			memcpy(header, p2 + 1, len);
-			header[len] = '\0';
-
-			p = strstr((char*)&header[0], " ");
-
-			if (p == NULL)
-			{
-				memset(szAuthCode, 0x00, sizeof(szAuthCode));
-				memcpy(szAuthCode, (char*)&header[0], len);
-			}
-			else
-			{
-				len = (unsigned int)p - ((unsigned int)&header[0]);
-				memset(szAuthCode, 0x00, sizeof(szAuthCode));
-				memcpy(szAuthCode, (char*)&header[0], len);
-			}
+			strcpy(domain, strtok(account, "\\"));
+			strcpy(username, strtok(NULL, "\\"));	
 		}
 		else
 		{
-			p = NULL;
-			p = strstr(buffer, "Proxy-Authorization: ");
-
-			if (p == NULL)
-			{
-				p = strstr(buffer, "proxy-authorization: ");
-			}
-
-			if (p != NULL)
-			{
-				p2 = strstr(p, " ");
-
-				if (p2 == NULL)
-					return false;
-
-				p = strstr(p2 + 1, "\r\n");
-
-				if (p == NULL)
-					return false;
-
-				len = ((unsigned int)p - 2) - (unsigned int)p2 + 1;
-				char header[1024];
-				memset(header, 0, sizeof(header));
-				memcpy(header, p2 + 1, len);
-				header[len] = '\0';
-
-				p = strstr((char*)&header[0], " ");
-
-				if (p == NULL)
-				{
-					memset(szAuthCode, 0x00, sizeof(szAuthCode));
-					memcpy(szAuthCode, (char*)&header[0], len);
-				}
-				else
-				{
-					len = (unsigned int)p - ((unsigned int)&header[0]);
-					memset(szAuthCode, 0x00, sizeof(szAuthCode));
-					memcpy(szAuthCode, (char*)&header[0], len);
-				}
-			}
-			else
-			{
-				return false;
-			}
+			strcpy(domain, "DOMAIN");
+			strcpy(username, account);	
 		}
+		
+		
+		strcpy( m_ntlm.domain, domain);
 
-		if (strcmp(szAuthCode, "Basic") == 0 || strcmp(szAuthCode, "basic") == 0)
+		char hostname[33];
+		memset( hostname,0,sizeof(hostname) );
+		::gethostname( hostname, 33 );
+		
+		for (idx = 0; idx < strlen(hostname); idx++)
 		{
-			CloseSocket();
-			Create();
-
-			if (!Socket::Connect(m_ProxyData.GetProxyHost(), m_ProxyData.GetProxyPort()))
-			{
-				Socket::PrintLog(5, "[Error]Fail Socket::Connect to Proxy(%s , %d) \r\n", m_ProxyData.GetProxyHost(), m_ProxyData.GetProxyPort());
-
-				WSASetLastError(PROXYSOCKET_ERROR_NOCONN);
-				return false;
-			}
-
-
-
-			// Basic auth info
-			char user_pass[512];
-			char encoded[512];
-
-			int wlen = _snprintf(user_pass, 512, "%s:%s", m_ProxyData.GetUser(), m_ProxyData.GetPass());
-			base64(encoded, user_pass, wlen);
-
-			ZeroMemory(buffer, sizeof(buffer));
-
-			sprintf(buffer,
-				"CONNECT %s:%d HTTP/1.0\r\n"
-				"User-Agent: Mozilla/4.0(compatible;MSIE6.0;WindowsNT5.1;SV1;.NETCLR\r\n"
-				"Host: %s:%d\r\n"
-				"Content-Length: 0\r\n"
-				"Proxy-Connection: Keep-Alive\r\n"
-				"Pragma: no-cache\r\n"
-				"Proxy-Authorization: Basic %s\r\n\r\n",
-				host, port, host, port, (char*)encoded);
+			if(hostname[idx] >= 'a' && hostname[idx] <= 'z')
+				m_ntlm.myhostname[idx] = hostname[idx] - 'a' + 'A'; // to uppercase letter
 		}
-		else if (strcmp(szAuthCode, "Digest") == 0 || strcmp(szAuthCode, "digest") == 0 || strcmp(szAuthCode, "DIGEST") == 0)
+		m_ntlm.myhostname[idx] = 0;
+		
+		//strcpy(m_ntlm.myhostname, "LIGHTCITY");
+		//strcpy(m_ntlm.myhostname, "S240E6400");
+		
+		strcpy( m_ntlm.username, username);
+		strcpy( m_ntlm.psw, m_ProxyData.GetPass());
+		
+		Socket::PrintLog(5 , "NTML domain:%s, hostname:%s, username:%s, userpass:%s\r\n", m_ntlm.domain, m_ntlm.myhostname, m_ntlm.username,  m_ntlm.psw);
+		
+		msglen = m_ntlm.ntlm_create_msg1( msgbuf,&msgbuflen );
+
+		/*
+		sprintf(Packet, 
+			"CONNECT %s:%d HTTP/1.0\r\n"
+			"User-Agent:Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1;"
+			" SV1; .NET CLR 2.0.50727; .NET CLR 3.0.04506.30; .NET CLR 1.1.4322)\r\n"
+			"Host: %s:%d\r\n"
+			"Content-Length: 0\r\n"
+			"Proxy-Connection: Keep-Alive\r\n"
+			"Pragma:no-cache\r\n"
+			"Proxy-Authorization: Basic %s\r\n"
+			"Proxy-Authorization: NTLM %s\r\n\r\n",
+		addr, port, addr, port, (char*)encoded, msgbuf);
+		*/
+
+		sprintf(Packet, 
+			"CONNECT %s:%d HTTP/1.0\r\n"
+			"User-Agent:Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1;"
+			" SV1; .NET CLR 2.0.50727; .NET CLR 3.0.04506.30; .NET CLR 1.1.4322)\r\n"
+			"Host: %s:%d\r\n"
+			"Content-Length: 0\r\n"
+			"Proxy-Connection: Keep-Alive\r\n"
+			"Pragma:no-cache\r\n"
+			"Proxy-Authorization: Basic %s\r\n\r\n" ,
+			addr, port, addr, port, (char*)encoded);
+		//delete [] encoded;
+		//delete [] lpUserPass;
+
+		Socket::PrintLog(5 , "Auth Mode : %s \r\n" , Packet);
+	}
+	
+
+	Socket::PrintLog(5 , "Send  PROXYTYPE_HTTP11 request \r\n");
+	if(!SendExact(Packet, strlen(Packet)))
+	{
+		Socket::PrintLog(5 , "[Error] Could not Send  PROXYTYPE_HTTP11 request \r\n");
+		WSASetLastError(PROXYSOCKET_ERROR_REQUESTFAILED);
+		return false;
+	}
+	
+	
+	// recv Response
+	//if(!RecvUntil(Packet, 1024, "\r\n"))
+	if(!RecvUntil(Packet, 4096, "\r\n"))
+	{	
+		Socket::PrintLog(5 , "[Error] Could not recv  PROXYTYPE_HTTP11 response \r\n");
+		WSASetLastError(PROXYSOCKET_ERROR_REQUESTFAILED);
+		return false;
+	}
+	
+	Socket::PrintLog(5 , "%s\r\n" , Packet);
+	
+	strtok(Packet, " ");
+	DWORD dwStatusCode = atoi(strtok(NULL, " "));
+	
+	// 일반적인 프록시 환경이라면 Basic 키가 적용이 되어 여기서 200 OK가 떨어진다.
+	if(dwStatusCode == 200)
+	{	// established ok
+		do 
 		{
-			CloseSocket();
-			Create();
+			//RecvUntil(Packet, 1024, "\r\n");
+			RecvUntil(Packet, 4096, "\r\n");
+		} 
+		while(!(strlen(Packet) == 2 && !strcmp(Packet, "\r\n")));
+		
+		Socket::PrintLog(5 , "ProxySocket::ConnectHTTP11() end ... 200OK established\r\n");
+		return true;
+	}
+	
+	// 만약 NTLM이라면 401 또는 407 에러가 떨어진다.
+	if(dwStatusCode == 401 || dwStatusCode == 407)
+	{
+		Socket::PrintLog(5 , "[Error] Recv %d UnAuthorized\r\n", dwStatusCode);
+		
+		m_proxyUnAuthorized = true; // 20170809 : 407에러 일때 Proxy 정보 표시
 
-			if (!Socket::Connect(m_ProxyData.GetProxyHost(), m_ProxyData.GetProxyPort()))
+		char strKey[512];
+		ZeroMemory(strKey, 512);
+		char *pTmp = NULL;
+		
+		do 
+		{
+			RecvUntil(Packet, 512, "\r\n");
+			pTmp = strstr(Packet, "Proxy-Authenticate: NTLM ");
+			if(pTmp != NULL) // NTLM 서버가 응답한 NTLM 키 값을 찾는다. Proxy-Authenticate: NTLM XXXXXX~ 이런식으로 응답이 온다.
 			{
-				Socket::PrintLog(5, "[Error]Fail Socket::Connect to Proxy(%s , %d) \r\n", m_ProxyData.GetProxyHost(), m_ProxyData.GetProxyPort());
-
-				WSASetLastError(PROXYSOCKET_ERROR_NOCONN);
+				pTmp = pTmp + strlen("Proxy-Authenticate: NTLM ");
+				strcpy(strKey, pTmp);
+				Socket::PrintLog(5 , "Recved type2 key :%s\r\n", strKey);
+			}
+			
+		} 
+		while(!(strlen(Packet) == 2 && !strcmp(Packet, "\r\n")));
+		
+		if(strlen(strKey) > 0) // NTLM 인증이라면 반드시 키 값이 존재한다. 키를 찾았다면, 안에서 nonce라는 데이터를 추출해 낸다.(type3 메시지 만들때 필요)
+		{
+			strcpy(msgbuf, strKey);
+			//strcpy(msgbuf, "TlRMTVNTUAACAAAAAAAAACgAAAABggAAU3J2Tm9uY2UAAAAAAAAAAA==");
+			int valuelen = strlen( msgbuf );
+			m_ntlm.ntlm_extract_msg2( msgbuf,&valuelen ); 
+			
+			Socket::PrintLog(5 , "NTML's nounce is %s\n", m_ntlm.nounce);
+			if( strcmp( (const char *)m_ntlm.nounce,"") == 0 )
+			{
+				Socket::PrintLog(5 , "NTML's nounce is NULL.\r\n");
 				return false;
 			}
-
-			//get realm , nonce , algorithm , qop , opaque
-			MakeDigestResponse(buffer, host, port);
-
-			ZeroMemory(buffer, sizeof(buffer));
-
-			sprintf(buffer,
+			
+			//	strcpy( m_ntlm.username,"u00118" );
+			//	strcpy( m_ntlm.psw, "34s1012");
+			
+			// Type3 메시지를 만들고 최종 전송한다. 문제가 없다면 200 OK가 떨어진다.
+			msglen = m_ntlm.ntlm_create_msg3( msgbuf,&msgbuflen ); 
+			
+			sprintf(Packet, 
 				"CONNECT %s:%d HTTP/1.0\r\n"
-				"User-Agent: Mozilla/4.0(compatible;MSIE6.0;WindowsNT5.1;SV1;.NETCLR\r\n"
-				"Host: %s:%d\r\n"
-				"Content-Length: 0\r\n"
-				"Proxy-Connection: Keep-Alive\r\n"
-				"Pragma: no-cache\r\n"
-				"Proxy-Authorization: Digest username=\"%s\",realm=\"%s\",nonce=\"%s\",uri=\"%S:%d\",cnonce=\"%s\",nc=%08d,algorithm=MD5,response=\"%s\",qop=\"%s\",opaque=\"%s\""
-				"\r\n\r\n",
-				host, port, host, port, m_ProxyData.GetProxyHost(), m_szrealm, m_sznonce, host, port, m_szcnonce, m_nonceCount, m_szresponse, m_szqop, m_szopaque);
-
-		}
-		else if (strcmp(szAuthCode, "NTLM") == 0 || strcmp(szAuthCode, "Ntlm") == 0 || strcmp(szAuthCode, "ntlm") == 0)
-		{
-
-			CloseSocket();
-			Create();
-
-			if (!Socket::Connect(m_ProxyData.GetProxyHost(), m_ProxyData.GetProxyPort()))
-			{
-				Socket::PrintLog(5, "[Error]Fail Socket::Connect to Proxy(%s , %d) \r\n", m_ProxyData.GetProxyHost(), m_ProxyData.GetProxyPort());
-
-				WSASetLastError(PROXYSOCKET_ERROR_NOCONN);
-				return false;
-			}
-
-			//NTLM PHASE1 , NTLMSSP_NEGOTIATE
-
-
-			//NTLM auth Info
-			char account[256];
-			char username[256];
-			char msgbuf[1024];
-			int idx;
-			int msgbuflen = sizeof(msgbuf);
-			int msglen;
-
-			ZeroMemory(account, sizeof(account));
-			ZeroMemory(ntlm_domain, sizeof(ntlm_domain));
-			ZeroMemory(username, sizeof(username));
-
-			strcpy(account, m_ProxyData.GetUser());
-
-			if (strstr(account, "\\") != NULL)
-			{
-				strcpy(ntlm_domain, strtok(account, "\\"));
-				strcpy(username, strtok(NULL, "\\"));
-			}
-			else
-			{
-				strcpy(ntlm_domain, "DOMAIN");
-				strcpy(username, account);
-			}
-
-			strcpy(ntlm_userid, username);
-			strcpy(ntlm_userpw, m_ProxyData.GetPass());
-
-			memset(ntlm_hostname, 0x00, sizeof(ntlm_hostname));
-			::gethostname(ntlm_hostname, sizeof(ntlm_hostname));
-
-
-			for (idx = 0; idx < strlen(ntlm_hostname); idx++)
-			{
-				if (ntlm_hostname[idx] >= 'a' && ntlm_hostname[idx] <= 'z')
-					ntlm_hostname[idx] = ntlm_hostname[idx] - 'a' + 'A'; // to uppercase letter
-			}
-
-			msglen = create_NtlmSsp_Negotiate(msgbuf, &msgbuflen, ntlm_hostname, ntlm_domain);
-
-			sprintf(buffer,
-				"CONNECT %s:%d HTTP/1.0\r\n"
-				"User-Agent: Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1;"
+				"User-Agent:Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1;"
 				" SV1; .NET CLR 2.0.50727; .NET CLR 3.0.04506.30; .NET CLR 1.1.4322)\r\n"
 				"Host: %s:%d\r\n"
 				"Content-Length: 0\r\n"
 				"Proxy-Connection: Keep-Alive\r\n"
-				"Pragma: no-cache\r\n"
+				"Pragma:no-cache\r\n"
 				"Proxy-Authorization: NTLM %s\r\n\r\n",
-				host, port, host, port, msgbuf);
-
-
-			if (!SendExact(buffer, strlen(buffer)))
+				addr, port, addr, port, msgbuf);
+			
+			Socket::PrintLog(5 , "Send  PROXYTYPE_HTTP11 type3 Msg : %s\r\n", Packet);
+			
+			if(!SendExact(Packet, strlen(Packet)))
 			{
-				Socket::PrintLog(5, "[Error] Could not Send  PROXYTYPE_HTTP11 request \r\n");
+				Socket::PrintLog(5 , "[Error] Could not Send  PROXYTYPE_HTTP11 type3 request \r\n");
 				WSASetLastError(PROXYSOCKET_ERROR_REQUESTFAILED);
 				return false;
 			}
-
-
-			ZeroMemory(buffer, sizeof(buffer));
-
-			//NTLMSSP_CHANGE를 받을 것이다.
-
-			if (!RecvUntil(buffer, 4096, "\r\n"))
-			{
-				Socket::PrintLog(5, "[Error] Could not recv  PROXYTYPE_HTTP11 response \r\n");
+			Socket::PrintLog(5 , "Send  PROXYTYPE_HTTP11 type3 Msg Success\r\n");
+			
+			if(!RecvUntil(Packet, 1024, "\r\n"))
+			{	
+				Socket::PrintLog(5 , "[Error] Could not recv  PROXYTYPE_HTTP11 type3 response \r\n");
 				WSASetLastError(PROXYSOCKET_ERROR_REQUESTFAILED);
 				return false;
 			}
-
-			Socket::PrintLog(5, "%s\r\n", buffer);
-
-			p = strstr(buffer, " ");
-
-			if (p == NULL)
-			{
-				return false;
-			}
-
-			p2 = strstr(p + 1, " ");
-
-			if (p2 == NULL)
-			{
-				return false;
-			}
-
-			len = (unsigned int)p2 - ((unsigned int)p + 1);
-
-			memset(szAuthCode, 0x00, sizeof(szAuthCode));
-			memcpy(szAuthCode, p + 1, len);
-
-			dwStatusCode = atoi(szAuthCode);
-
-			if (dwStatusCode == 200)
-			{
+			Socket::PrintLog(5 , "Recv  PROXYTYPE_HTTP11 type3 Msg : %s\r\n", Packet);
+			strtok(Packet, " ");
+			DWORD dwStatusCode = atoi(strtok(NULL, " "));
+			
+			if(dwStatusCode == 200) // NTLM 인증 완료
+			{	// established ok
+				do 
+				{
+					RecvUntil(Packet, 1024, "\r\n");
+				} 
+				while(!(strlen(Packet) == 2 && !strcmp(Packet, "\r\n")));
+				
+				Socket::PrintLog(5 , "ProxySocket::ConnectHTTP11() end ... 200OK established\r\n");
 				return true;
 			}
-			else if (dwStatusCode == 401 || dwStatusCode == 407)
-			{
-				//GET Change key
-				len = strlen(msgbuf);
-				GetNtlmSsp_Change_Key(msgbuf, buffer);
-				GetNonceFromChange_Key(msgbuf, &len);
-
-				if (strcmp((const char *)nounce, "") == 0)
-				{
-					return false;
-				}
-
-				msglen = Create_NtlmSsp_Auth(msgbuf, &msgbuflen);
-
-				memset(buffer, 0x00, sizeof(buffer));
-
-				sprintf(buffer,
-					"CONNECT %s:%d HTTP/1.0\r\n"
-					"User-Agent: Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1;"
-					" SV1; .NET CLR 2.0.50727; .NET CLR 3.0.04506.30; .NET CLR 1.1.4322)\r\n"
-					"Host: %s:%d\r\n"
-					"Content-Length: 0\r\n"
-					"Proxy-Connection: Keep-Alive\r\n"
-					"Pragma: no-cache\r\n"
-					"Proxy-Authorization: NTLM %s\r\n\r\n",
-					host, port, host, port, msgbuf);
-			}
+			
 		}
-		else //BASIC , Digest , NTLM도 아닌 경우
-		{
-
-			return false;
-		}
+		if(m_ProxyData.GetAuth()) WSASetLastError(PROXYSOCKET_ERROR_AUTHFAILED);
+		else WSASetLastError(PROXYSOCKET_ERROR_AUTHREQUIRED);
+	} 
+	else
+	{
+		Socket::PrintLog(5 , "[Error] Recv other UnAuthorized err msg(%d)\r\n" , dwStatusCode);
+		WSASetLastError(PROXYSOCKET_ERROR_REQUESTFAILED);
 	}
-
-	return true;
+	return false;
 }
-
 
 bool ProxySocket::SendHTTPQuery(LPCSTR lpHTTPQuery, INT dwTotalBytesSend)
 {
@@ -1139,7 +791,6 @@ bool ProxySocket::SendHTTPQuery(LPCSTR lpHTTPQuery, INT dwTotalBytesSend)
 
 	return true;
 }
-
 
 bool ProxySocket::WinInetConnect(char *strRetVal, int nRetValSize, char *strAgent, char *strServerAddr, int nServerPort, char *strUrl)
 {
@@ -1227,9 +878,148 @@ bool ProxySocket::WinInetConnect(char *strRetVal, int nRetValSize, char *strAgen
 		return true;	
 	}
 
-	return false;	
+	return false;
+
+	
+	
+/*
+	HINTERNET hConnectHandle, hOpenHandle,  hResourceHandle;
+	DWORD dwError, dwStatus;
+	DWORD dwStatusSize = sizeof(dwStatus);
+	char strUsername[64], strPassword[64];
+	char buffer[1024], buffer2[1024];
+	DWORD sz;
+	int i;
+	DWORD cchUserLength, cchPasswordLength;
+	BOOL fRet;
+	DWORD dwIndex;
+	strcpy(strUsername, "fc\\u00118");
+	strcpy(strPassword, "34s1012");
+	cchUserLength = strlen(strUsername);
+	cchPasswordLength = strlen(strPassword);
+
+	hOpenHandle = InternetOpen("AnySupport", 
+							   INTERNET_OPEN_TYPE_PRECONFIG | INTERNET_OPEN_TYPE_PROXY, 
+							   "172.16.1.51", NULL, 0);
+	hConnectHandle = InternetConnect(hOpenHandle, 
+									 "anysupport.jp", 
+									 INTERNET_INVALID_PORT_NUMBER, 
+									 NULL,
+									 NULL, 
+									 INTERNET_SERVICE_HTTP,
+									 0,0);
+	
+	hResourceHandle = HttpOpenRequest(hConnectHandle, "GET",
+									  "/ipchk.php",
+									  NULL, NULL, NULL, 
+									  INTERNET_FLAG_KEEP_CONNECTION, 
+									  0);
+resend:
+
+	HttpSendRequest(hResourceHandle, NULL, 0, NULL, 0);
+
+	BOOL ret = HttpQueryInfo(hResourceHandle, HTTP_QUERY_FLAG_NUMBER | 
+				  HTTP_QUERY_STATUS_CODE, &dwStatus, &dwStatusSize, NULL);
+	
+	Socket::PrintLog(1, "ret:%d, getlasterror:%d, dwStatus : %d, dwStatusSize:%d\r\n" , ret, GetLastError(), dwStatus, dwStatusSize );
+	switch (dwStatus)
+	{
+		// cchUserLength is the length of strUsername and 
+		// cchPasswordLength is the length of strPassword.
+	
+		dwIndex = 0;
+		sz = 1024;
+		ZeroMemory(buffer, sizeof(buffer));
+		ZeroMemory(buffer2, sizeof(buffer2));
+			
+		case HTTP_STATUS_PROXY_AUTH_REQ: // Proxy Authentication Required
+			// Insert code to set strUsername and strPassword.
+			
+			// Insert code to safely determine cchUserLength and
+			// cchPasswordLength. Insert appropriate error handling code.
+			
+			//HttpQueryInfo(hResourceHandle, HTTP_QUERY_RAW_HEADERS_CRLF, buffer, &sz, NULL); 
+
+			InternetSetOption(hResourceHandle, 
+							  INTERNET_OPTION_PROXY_USERNAME, 
+							  strUsername, 
+							  cchUserLength+1);
+
+			InternetSetOption(hResourceHandle, 
+							  INTERNET_OPTION_PROXY_PASSWORD, 
+							  strPassword, 
+							  cchPasswordLength+1);
+	
+			goto resend;
+			break;
+			
+		case HTTP_STATUS_DENIED:     // Server Authentication Required.
+			// Insert code to set strUsername and strPassword.
+			
+			// Insert code to safely determine cchUserLength and 
+			// cchPasswordLength. Insert error handling code as 
+			// appropriate.
+			InternetSetOption(hResourceHandle, INTERNET_OPTION_USERNAME,
+							  strUsername, cchUserLength+1);
+			InternetSetOption(hResourceHandle, INTERNET_OPTION_PASSWORD,
+							  strPassword, cchPasswordLength+1);
+			goto resend;
+			break;
+	}
+	return TRUE;
+*/
 }
 
 
+// void ProxySocket::GetProxyIDPW(char *proxy_id, char *proxy_pw)
+// {
+// 	/* 
+// 		1. 레지스트리를 뒤져서 이미 저장된 ID/PW가 있으면 그걸 사용한다.
+// 		2. 없다면 인증창 다이얼로그를 띄워서 입력받는다.
+// 		3. 저장이 체크되어 있으면 레지스트리에 저장하고 리턴한다.
+// 		4. 저장이 안되어 있으면 그냥 리턴한다.
+// 	*/
+// 	HKEY key;
+// 	DWORD dwDisp		     = 0;
+// 	DWORD temp_size		     = 13;
+// 	DWORD temp_size_password = 16;
+// 	char temp_id[13];
+// 	char temp_password[16];
+// 	char temp_reg[255];
+// 	
+// 	ZeroMemory(temp_id, 13);
+// 	ZeroMemory(temp_password, 13);
+// 	ZeroMemory(temp_reg, 255);
+// 	
+// 	//LoadString(g_hRes, IDS_REG_HKEY_LOCAL_MACH, temp_reg, 255);
+// 	strcpy(temp_reg, "Software\\Koino\\AnySupport");
+// 	RegCreateKeyEx(HKEY_LOCAL_MACHINE, temp_reg, 0, NULL,
+// 		REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, NULL, &key,&dwDisp);
+// 	
+// 	long ret = RegQueryValueEx(key, "Proxy id", 0, NULL,  (unsigned char*)proxy_id, &temp_size);
+// 	if(ret == ERROR_SUCCESS)
+// 	{
+// 		RegQueryValueEx(key, "Proxy id", 0, NULL,  (unsigned char*)proxy_id, &temp_size);
+// 		RegCloseKey(key);
+// 	}
+// 
+// 	RegCreateKeyEx(HKEY_LOCAL_MACHINE, temp_reg, 0, NULL,
+// 			REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, NULL, &key,&dwDisp);
+// 
+// 	ret = RegQueryValueEx(key, "Proxy password", 0, NULL,  (unsigned char*)proxy_pw, &temp_size_password);
+// 	if(ret == ERROR_SUCCESS)
+// 	{
+// 		RegQueryValueEx(key, "Proxy password", 0, NULL,  (unsigned char*)proxy_pw, &temp_size_password);
+// 		RegCloseKey(key);
+// 	}
+// }
 
-
+bool ProxySocket::GetProxyIPPortIfUnAuthorized(char * ip, char * port)
+{
+	if(m_proxyUnAuthorized) {
+		strcpy(ip, m_ProxyData.GetProxyHost());
+		sprintf(port, "%d", m_ProxyData.GetProxyPort());
+		return true;
+	}
+	else return false;
+}

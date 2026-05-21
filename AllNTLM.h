@@ -1,8 +1,9 @@
 #include <stdio.h>
+#include <winsock2.h>
 #include <windows.h>
 #include <wincrypt.h>
 #include <process.h>
-#include <string.h>
+#include <string>
 #include <winbase.h>
 # include <wincrypt.h>
 #define SECURITY_WIN32

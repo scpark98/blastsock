@@ -28,7 +28,7 @@ static unsigned char s_fixedkey[8] = {24,25,132,9,42,56,43,2};
  *   Encrypt a password and store it in a file.
  */
 int
-neturoEncryptPasswd(char *passwd, char *encryptedPasswd)
+neturoEncryptPasswd(const char *passwd, char *encryptedPasswd)
 {
     int i;
 
@@ -62,7 +62,7 @@ neturoEncryptPasswd(char *passwd, char *encryptedPasswd)
  *   not be retrieved for some reason.
  */
 char *
-neturoDecryptPasswd(char *inouttext)
+neturoDecryptPasswd(const char *inouttext)
 {
 	int i;
     unsigned char *passwd = (unsigned char *)malloc(MAXPWLEN+1);

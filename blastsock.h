@@ -1,4 +1,4 @@
-#ifndef BLASTSOCK_BLASTSOCK_H
+﻿#ifndef BLASTSOCK_BLASTSOCK_H
 #define BLASTSOCK_BLASTSOCK_H
 
 //#include "ProxyInfo.h"

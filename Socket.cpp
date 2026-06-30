@@ -1,4 +1,4 @@
- // Socket.cpp: implementation of the Socket class.
+﻿ // Socket.cpp: implementation of the Socket class.
 //
 //////////////////////////////////////////////////////////////////////
 

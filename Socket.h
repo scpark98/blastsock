@@ -1,4 +1,4 @@
-#ifndef BLASTSOCK_SOCKET_H
+﻿#ifndef BLASTSOCK_SOCKET_H
 #define BLASTSOCK_SOCKET_H
 
 #include <winsock2.h>

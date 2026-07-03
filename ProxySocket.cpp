@@ -1,4 +1,4 @@
-// ProxySocket.cpp: implementation of the CProxySocket class.
+ï»¿// ProxySocket.cpp: implementation of the CProxySocket class.
 //
 //////////////////////////////////////////////////////////////////////
 
@@ -439,7 +439,7 @@ bool ProxySocket::ConnectHTTP11(const char* addr, unsigned int port)
 	Socket::PrintLog(5 , "ProxySocket::ConnectHTTP11(%s , %d) start\r\n" , addr , port);
 	Socket::PrintLog(5 , "Socket::Connect to Proxy(%s , %d) \r\n" , m_ProxyData.GetProxyHost() , m_ProxyData.GetProxyPort());
 
-	// Å×½ºÆ® 
+	// í…ŒìŠ¤íŠ¸ 
 	char tempAddr[256] = "";
 	int tempport = port;
 	strcpy(tempAddr, addr);
@@ -523,7 +523,7 @@ bool ProxySocket::ConnectHTTP11(const char* addr, unsigned int port)
 		char user_pass[256];
 		char encoded[512];
 
-		// ÇÁ·Ï½Ã Basic Key¸¦ ¸¸µç´Ù.
+		// í”„ë¡ì‹œ Basic Keyë¥¼ ë§Œë“ ë‹¤.
 		int wlen = _snprintf(user_pass, 256, "%s:%s", m_ProxyData.GetUser(), m_ProxyData.GetPass());
 		base64(encoded, user_pass, wlen);
 
@@ -537,8 +537,8 @@ bool ProxySocket::ConnectHTTP11(const char* addr, unsigned int port)
 		*/	
 		//sprintf((char*)encoded, "cmFpbm1ha2VyOnJsYWd5Y2pm");
 
-		// NTLM À¯ÀúÀÏ °æ¿ì¿¡´Â µµ¸ŞÀÎ\À¯Àú³×ÀÓ ½ÄÀ¸·Î ¾ÆÀÌµğ°¡ ±¸¼ºÀÌ µÇ¾î ÀÖ´Ù.
-		// µµ¸ŞÀÎ°ú À¯Àú³×ÀÓÀ» ÆÄ½ÌÇÑ´Ù.
+		// NTLM ìœ ì €ì¼ ê²½ìš°ì—ëŠ” ë„ë©”ì¸\ìœ ì €ë„¤ì„ ì‹ìœ¼ë¡œ ì•„ì´ë””ê°€ êµ¬ì„±ì´ ë˜ì–´ ìˆë‹¤.
+		// ë„ë©”ì¸ê³¼ ìœ ì €ë„¤ì„ì„ íŒŒì‹±í•œë‹¤.
 		/*
 		char account[256];
 		char domain[256];
@@ -637,7 +637,7 @@ bool ProxySocket::ConnectHTTP11(const char* addr, unsigned int port)
 	strtok(Packet, " ");
 	DWORD dwStatusCode = atoi(strtok(NULL, " "));
 	
-	// ÀÏ¹İÀûÀÎ ÇÁ·Ï½Ã È¯°æÀÌ¶ó¸é Basic Å°°¡ Àû¿ëÀÌ µÇ¾î ¿©±â¼­ 200 OK°¡ ¶³¾îÁø´Ù.
+	// ì¼ë°˜ì ì¸ í”„ë¡ì‹œ í™˜ê²½ì´ë¼ë©´ Basic í‚¤ê°€ ì ìš©ì´ ë˜ì–´ ì—¬ê¸°ì„œ 200 OKê°€ ë–¨ì–´ì§„ë‹¤.
 	if(dwStatusCode == 200)
 	{	// established ok
 		do 
@@ -651,12 +651,12 @@ bool ProxySocket::ConnectHTTP11(const char* addr, unsigned int port)
 		return true;
 	}
 	
-	// ¸¸¾à NTLMÀÌ¶ó¸é 401 ¶Ç´Â 407 ¿¡·¯°¡ ¶³¾îÁø´Ù.
+	// ë§Œì•½ NTLMì´ë¼ë©´ 401 ë˜ëŠ” 407 ì—ëŸ¬ê°€ ë–¨ì–´ì§„ë‹¤.
 	if(dwStatusCode == 401 || dwStatusCode == 407)
 	{
 		Socket::PrintLog(5 , "[Error] Recv %d UnAuthorized\r\n", dwStatusCode);
 		
-		m_proxyUnAuthorized = true; // 20170809 : 407¿¡·¯ ÀÏ¶§ Proxy Á¤º¸ Ç¥½Ã
+		m_proxyUnAuthorized = true; // 20170809 : 407ì—ëŸ¬ ì¼ë•Œ Proxy ì •ë³´ í‘œì‹œ
 
 		char strKey[512];
 		ZeroMemory(strKey, 512);
@@ -666,7 +666,7 @@ bool ProxySocket::ConnectHTTP11(const char* addr, unsigned int port)
 		{
 			RecvUntil(Packet, 512, "\r\n");
 			pTmp = strstr(Packet, "Proxy-Authenticate: NTLM ");
-			if(pTmp != NULL) // NTLM ¼­¹ö°¡ ÀÀ´äÇÑ NTLM Å° °ªÀ» Ã£´Â´Ù. Proxy-Authenticate: NTLM XXXXXX~ ÀÌ·±½ÄÀ¸·Î ÀÀ´äÀÌ ¿Â´Ù.
+			if(pTmp != NULL) // NTLM ì„œë²„ê°€ ì‘ë‹µí•œ NTLM í‚¤ ê°’ì„ ì°¾ëŠ”ë‹¤. Proxy-Authenticate: NTLM XXXXXX~ ì´ëŸ°ì‹ìœ¼ë¡œ ì‘ë‹µì´ ì˜¨ë‹¤.
 			{
 				pTmp = pTmp + strlen("Proxy-Authenticate: NTLM ");
 				strcpy(strKey, pTmp);
@@ -676,7 +676,7 @@ bool ProxySocket::ConnectHTTP11(const char* addr, unsigned int port)
 		} 
 		while(!(strlen(Packet) == 2 && !strcmp(Packet, "\r\n")));
 		
-		if(strlen(strKey) > 0) // NTLM ÀÎÁõÀÌ¶ó¸é ¹İµå½Ã Å° °ªÀÌ Á¸ÀçÇÑ´Ù. Å°¸¦ Ã£¾Ò´Ù¸é, ¾È¿¡¼­ nonce¶ó´Â µ¥ÀÌÅÍ¸¦ ÃßÃâÇØ ³½´Ù.(type3 ¸Ş½ÃÁö ¸¸µé¶§ ÇÊ¿ä)
+		if(strlen(strKey) > 0) // NTLM ì¸ì¦ì´ë¼ë©´ ë°˜ë“œì‹œ í‚¤ ê°’ì´ ì¡´ì¬í•œë‹¤. í‚¤ë¥¼ ì°¾ì•˜ë‹¤ë©´, ì•ˆì—ì„œ nonceë¼ëŠ” ë°ì´í„°ë¥¼ ì¶”ì¶œí•´ ë‚¸ë‹¤.(type3 ë©”ì‹œì§€ ë§Œë“¤ë•Œ í•„ìš”)
 		{
 			strcpy(msgbuf, strKey);
 			//strcpy(msgbuf, "TlRMTVNTUAACAAAAAAAAACgAAAABggAAU3J2Tm9uY2UAAAAAAAAAAA==");
@@ -693,7 +693,7 @@ bool ProxySocket::ConnectHTTP11(const char* addr, unsigned int port)
 			//	strcpy( m_ntlm.username,"u00118" );
 			//	strcpy( m_ntlm.psw, "34s1012");
 			
-			// Type3 ¸Ş½ÃÁö¸¦ ¸¸µé°í ÃÖÁ¾ Àü¼ÛÇÑ´Ù. ¹®Á¦°¡ ¾ø´Ù¸é 200 OK°¡ ¶³¾îÁø´Ù.
+			// Type3 ë©”ì‹œì§€ë¥¼ ë§Œë“¤ê³  ìµœì¢… ì „ì†¡í•œë‹¤. ë¬¸ì œê°€ ì—†ë‹¤ë©´ 200 OKê°€ ë–¨ì–´ì§„ë‹¤.
 			msglen = m_ntlm.ntlm_create_msg3( msgbuf,&msgbuflen ); 
 			
 			sprintf(Packet, 
@@ -727,7 +727,7 @@ bool ProxySocket::ConnectHTTP11(const char* addr, unsigned int port)
 			strtok(Packet, " ");
 			DWORD dwStatusCode = atoi(strtok(NULL, " "));
 			
-			if(dwStatusCode == 200) // NTLM ÀÎÁõ ¿Ï·á
+			if(dwStatusCode == 200) // NTLM ì¸ì¦ ì™„ë£Œ
 			{	// established ok
 				do 
 				{
@@ -762,7 +762,7 @@ bool ProxySocket::SendHTTPQuery(LPCSTR lpHTTPQuery, INT dwTotalBytesSend)
 		{
 			if(lpHTTPQuery[i] == ' ')
 			{
-				// XXX http://host:port/xxxx HTTP/xx ·Î ¸¸µé¾îÁØ´Ù
+				// XXX http://host:port/xxxx HTTP/xx ë¡œ ë§Œë“¤ì–´ì¤€ë‹¤
 				CHAR temp[10]; ZeroMemory(temp, 10);
 				strncat(temp, lpHTTPQuery, i);
 				sprintf(lpProxyHTTPQuery, "%s http://%s:%d/", temp, m_ProxyData.GetDestinationHost(), m_ProxyData.GetDestinationPort());
@@ -974,10 +974,10 @@ resend:
 // void ProxySocket::GetProxyIDPW(char *proxy_id, char *proxy_pw)
 // {
 // 	/* 
-// 		1. ·¹Áö½ºÆ®¸®¸¦ µÚÁ®¼­ ÀÌ¹Ì ÀúÀåµÈ ID/PW°¡ ÀÖÀ¸¸é ±×°É »ç¿ëÇÑ´Ù.
-// 		2. ¾ø´Ù¸é ÀÎÁõÃ¢ ´ÙÀÌ¾ó·Î±×¸¦ ¶ç¿ö¼­ ÀÔ·Â¹Ş´Â´Ù.
-// 		3. ÀúÀåÀÌ Ã¼Å©µÇ¾î ÀÖÀ¸¸é ·¹Áö½ºÆ®¸®¿¡ ÀúÀåÇÏ°í ¸®ÅÏÇÑ´Ù.
-// 		4. ÀúÀåÀÌ ¾ÈµÇ¾î ÀÖÀ¸¸é ±×³É ¸®ÅÏÇÑ´Ù.
+// 		1. ë ˆì§€ìŠ¤íŠ¸ë¦¬ë¥¼ ë’¤ì ¸ì„œ ì´ë¯¸ ì €ì¥ëœ ID/PWê°€ ìˆìœ¼ë©´ ê·¸ê±¸ ì‚¬ìš©í•œë‹¤.
+// 		2. ì—†ë‹¤ë©´ ì¸ì¦ì°½ ë‹¤ì´ì–¼ë¡œê·¸ë¥¼ ë„ì›Œì„œ ì…ë ¥ë°›ëŠ”ë‹¤.
+// 		3. ì €ì¥ì´ ì²´í¬ë˜ì–´ ìˆìœ¼ë©´ ë ˆì§€ìŠ¤íŠ¸ë¦¬ì— ì €ì¥í•˜ê³  ë¦¬í„´í•œë‹¤.
+// 		4. ì €ì¥ì´ ì•ˆë˜ì–´ ìˆìœ¼ë©´ ê·¸ëƒ¥ ë¦¬í„´í•œë‹¤.
 // 	*/
 // 	HKEY key;
 // 	DWORD dwDisp		     = 0;
